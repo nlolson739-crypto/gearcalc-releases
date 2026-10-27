@@ -106,6 +106,59 @@ export function ItemPicker({
   );
 }
 
+const SLOT_ART = import.meta.glob('../../vendor/osrs-dps-calc/src/public/img/slots/*.png', { eager: true, import: 'default' }) as Record<string, string>;
+export const slotArt = (slot: Slot) => Object.entries(SLOT_ART).find(([p]) => p.endsWith(`/${slot}.png`))?.[1] ?? '';
+
+/**
+ * One equipment slot as an icon button, like the in-game equipment tab. Clicking it opens a search popover.
+ */
+export function SlotButton({
+  slot, value, onChange, label, art,
+}: { slot: Slot | 'any-weapon', value: EquipmentPiece | null, onChange: (e: EquipmentPiece | null) => void, label?: string, art?: string }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const results = useMemo(() => {
+    if (!open) return [];
+    const nq = norm(q);
+    const pool = equipment.filter((e) => (slot === 'any-weapon' ? e.slot === 'weapon' : e.slot === slot));
+    const hits = nq ? pool.filter((e) => norm(e.name).includes(nq)) : pool;
+    return hits.sort((a, b) => (norm(a.name).startsWith(nq) ? 0 : 1) - (norm(b.name).startsWith(nq) ? 0 : 1) || a.name.localeCompare(b.name)).slice(0, 40);
+  }, [q, open, slot]);
+  const name = label ?? slot;
+  return (
+    <div
+      className="slot"
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false); }}
+    >
+      <button
+        type="button"
+        className={`slot-btn${value ? ' filled' : ''}${open ? ' open' : ''}`}
+        title={value ? `${name}: ${value.name}${value.version ? ` (${value.version})` : ''}` : `${name}: empty`}
+        aria-label={value ? `${name}: ${value.name}` : `${name}: empty`}
+        onClick={() => { setOpen(!open); setQ(''); }}
+      >
+        <img src={value ? itemImage(value) : art ?? (slot === 'any-weapon' ? slotArt('weapon') : slotArt(slot))} alt="" className={value ? '' : 'ghost'} />
+      </button>
+      {open && (
+        <div className="slot-pop" role="dialog" aria-label={`Choose ${name}`}>
+          <input autoFocus placeholder={`Search ${name}…`} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }} />
+          <ul className="item-picker-list static" role="listbox">
+            {value && <li><button type="button" onClick={() => { onChange(null); setOpen(false); }}><span className="item-icon" /><span className="muted">Remove {value.name}</span></button></li>}
+            {results.map((e) => (
+              <li key={e.id}>
+                <button type="button" onClick={() => { onChange(e); setOpen(false); }}>
+                  <span className="item-icon"><img src={itemImage(e)} alt="" loading="lazy" /></span>
+                  <span>{e.name}{e.version ? <small> ({e.version})</small> : null}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Search box over the wiki monster list (each version, e.g. Ocellus phases, is its own entry). */
 export function MonsterPicker({ value, onChange, extra = [] }: {
   value: string, onChange: (key: string) => void, extra?: { key: string, label: string }[],

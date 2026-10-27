@@ -8,6 +8,8 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 // It also imports a few Next.js / network modules that the calculations never use; those
 // are pointed at small local shims.
 export default defineConfig({
+  // Relative paths so the built app also works when the desktop launcher serves it.
+  base: './',
   plugins: [react()],
   resolve: {
     alias: [

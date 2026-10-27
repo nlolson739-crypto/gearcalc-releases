@@ -1,0 +1,22 @@
+GearCalc - personal OSRS gear calculator
+==========================================
+
+Open GearCalc.exe. Keep the whole GearCalc folder together (the exe needs the _internal folder next to it).
+It needs an internet connection for item and monster pictures. Windows 10/11 already include the
+Edge WebView2 component it uses.
+
+SCREENS
+- DPS: pick a target (each Ocellus phase is its own entry) and compare up to 4 setups. Click a gear slot to
+  search for an item. Pick an attack style next to the gear. The star slot top-left is the spec weapon.
+  Buffs (prayer, potions, thrall, Slayer task, Mark of Darkness, Charge) apply to every setup.
+- Best setup: finds the best gear for melee, ranged or magic on the target. Use as 1/2/3 copies a result
+  into a setup.
+- Defence reduction: count the special attacks that hit. Stats after specials shows the result. The same
+  drains feed the DPS screen.
+- Freeze check: freeze chance for every freeze spell, with and without Augury and the Salve amulet (ei).
+
+SOURCES
+All calculations use the OSRS Wiki's own DPS calculator engine and data. Extra rules (thralls, freeze spells,
+Xarth corpse) come from OSRS Wiki pages and show their source.
+
+Your setups are saved automatically in %APPDATA%\GearCalc.

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import specArt from '@/public/img/misc/power.webp';
 import { PotionMap } from '@/utils';
 import { PrayerMap } from '@/enums/Prayer';
 import { getCdnImage } from '@/utils';
@@ -11,7 +12,7 @@ import {
 } from '~/state';
 import { THRALLS, THRALL_SOURCE, wikiUrl } from '~/rules/wiki';
 import {
-  fmtTime, IconRow, IconToggle, ItemPicker, MonsterPicker, Panel, pct, Segmented, Stepper, wikiImage,
+  fmtTime, IconRow, IconToggle, MonsterPicker, Panel, pct, SlotButton, Stepper, wikiImage,
 } from '~/ui/common';
 
 type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
@@ -45,7 +46,8 @@ export default function DpsScreen({ state, setState }: Props) {
   const cols = `170px repeat(${state.setups.length}, minmax(0, 1fr))`;
   const bestOf = (vals: (number | undefined)[], low = false) => {
     const nums = vals.filter((v): v is number => v !== undefined && Number.isFinite(v));
-    return nums.length ? (low ? Math.min(...nums) : Math.max(...nums)) : undefined;
+    if (nums.length < 2 || nums.every((n) => n === nums[0])) return undefined; // nothing to pick between
+    return low ? Math.min(...nums) : Math.max(...nums);
   };
   const row = (label: string, vals: (number | undefined)[], fmt: (v: number) => string, low = false) => {
     const best = bestOf(vals, low);
@@ -124,7 +126,9 @@ export default function DpsScreen({ state, setState }: Props) {
         <div className="setups">
           {state.setups.map((s) => {
             const gear = gearOf(s);
-            const styles = stylesFor(gear.weapon);
+            // Manual casting is only worth listing for weapons with no other way to attack (or no weapon).
+            const all = stylesFor(gear.weapon);
+            const styles = all.length > 1 ? all.filter((x) => x.stance !== 'Manual Cast') : all;
             const style = styles.find((x) => x.name === s.style) ?? styles[0];
             return (
               <Panel key={s.id}>
@@ -135,21 +139,26 @@ export default function DpsScreen({ state, setState }: Props) {
                     <button type="button" className="btn" aria-label={`Remove ${s.name}`} onClick={() => setState((st) => ({ ...st, setups: st.setups.filter((x) => x.id !== s.id) }))}>×</button>
                   )}
                 </div>
-                <Segmented
-                  label="Attack style"
-                  value={style?.name ?? ''}
-                  onChange={(v) => setSetup(s.id, (x) => ({ ...x, style: v }))}
-                  options={styles.map((x) => ({ value: x.name, label: x.name, detail: `${x.type ? x.type[0].toUpperCase() + x.type.slice(1) : 'None'} · ${x.stance}` }))}
-                />
-                {SLOTS.map((slot) => (
-                  <div className="slot-row" key={slot}>
-                    <span>{SLOT_LABEL[slot]}</span>
-                    <ItemPicker slot={slot} value={gear[slot] ?? null} onChange={(e) => setSetup(s.id, (x) => ({ ...x, gear: { ...x.gear, [slot]: e?.id } }))} />
+                <div className="setup-body">
+                  <div className="equip-grid">
+                    {SLOTS.map((slot) => (
+                      <div key={slot} style={{ gridArea: slot }}>
+                        <SlotButton slot={slot} label={SLOT_LABEL[slot]} value={gear[slot] ?? null} onChange={(e) => setSetup(s.id, (x) => ({ ...x, gear: { ...x.gear, [slot]: e?.id } }))} />
+                      </div>
+                    ))}
+                    <div style={{ gridArea: 'spec' }} className="spec-slot">
+                      <SlotButton slot="any-weapon" label="Spec weapon" value={itemById(s.specWeapon)} onChange={(e) => setSetup(s.id, (x) => ({ ...x, specWeapon: e?.id }))} art={specArt} />
+                      <span>Spec</span>
+                    </div>
                   </div>
-                ))}
-                <div className="slot-row">
-                  <span>Spec</span>
-                  <ItemPicker slot="any-weapon" value={itemById(s.specWeapon)} placeholder="No spec weapon" onChange={(e) => setSetup(s.id, (x) => ({ ...x, specWeapon: e?.id }))} />
+                  <div role="group" aria-label="Attack style" className="style-list">
+                    {styles.map((x) => (
+                      <button type="button" key={x.name + x.stance} className={x === style ? 'on' : ''} aria-pressed={x === style} onClick={() => setSetup(s.id, (y) => ({ ...y, style: x.name }))}>
+                        <span>{x.displayNameOverride ?? x.name}</span>
+                        <small>{x.type ? x.type[0].toUpperCase() + x.type.slice(1) : 'None'} · {x.stance}</small>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </Panel>
             );

@@ -44,7 +44,7 @@ button { cursor: pointer; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
 
 /* layout */
-.page { max-width: 1440px; margin: 0 auto; padding: 24px 32px 48px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.page { max-width: 1600px; margin: 0 auto; padding: 18px 24px 40px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
 .side { flex: 1 1 300px; max-width: 390px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .main { flex: 999 1 680px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -89,7 +89,28 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .item-picker-list small { color: var(--muted); }
 
 /* setups */
-.setups { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
+.setups { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.setups .panel { padding: 12px; gap: 10px; }
+.setup-body { display: flex; gap: 10px; align-items: flex-start; }
+.equip-grid {
+  display: grid; grid-template-columns: repeat(3, 46px); grid-auto-rows: 46px; gap: 4px; flex-shrink: 0;
+  grid-template-areas: "spec head ." "cape neck ammo" "weapon body shield" ". legs ." "hands feet ring";
+}
+.slot { position: relative; }
+.slot-btn { width: 46px; height: 46px; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: var(--inset); display: flex; align-items: center; justify-content: center; }
+.slot-btn:hover, .slot-btn.open { border-color: var(--gold); }
+.slot-btn img { max-width: 36px; max-height: 34px; image-rendering: pixelated; }
+.slot-btn img.ghost { opacity: 0.25; }
+.spec-slot { display: flex; flex-direction: column; align-items: center; }
+.spec-slot span { display: none; }
+.slot-pop { position: absolute; z-index: 30; left: 0; top: 50px; width: 300px; padding: 8px; background: #20242b; border: 1px solid var(--control); border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column; gap: 6px; }
+.slot-pop input { min-height: 38px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--control); background: var(--inset); color: var(--text-strong); }
+.item-picker-list.static { position: static; max-height: 300px; box-shadow: none; border: none; padding: 0; background: transparent; }
+.style-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.style-list button { min-height: 34px; padding: 3px 8px; border-radius: 7px; border: 1px solid var(--control); background: var(--inset); color: #c3c9d3; text-align: left; display: flex; flex-direction: column; justify-content: center; }
+.style-list button span { font-size: 13px; font-weight: 600; line-height: 1.2; }
+.style-list button small { font-size: 11px; color: var(--muted); line-height: 1.2; }
+.style-list button.on { background: #2f3540; border-color: var(--gold); color: var(--text-strong); }
 .setup-head { display: flex; align-items: center; gap: 10px; }
 .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 .setup-head input { font-weight: 600; background: transparent; border-color: transparent; padding: 0 4px; }
@@ -99,7 +120,7 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 /* results */
 .results { overflow-x: auto; }
 .results-grid { min-width: 560px; display: flex; flex-direction: column; font-family: var(--mono); }
-.results-row { display: grid; gap: 8px; padding: 11px 0; border-bottom: 1px solid var(--line-soft); align-items: center; }
+.results-row { display: grid; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); align-items: center; }
 .results-row.head { font-family: var(--sans); font-size: 13px; color: var(--muted); padding-top: 0; border-bottom-color: var(--line); }
 .results-row > span:first-child { font-family: var(--sans); color: var(--soft); }
 .results-row .val { font-size: 18px; font-weight: 600; }
