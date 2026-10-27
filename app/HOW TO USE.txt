@@ -9,8 +9,11 @@ SCREENS
 - DPS: pick a target (each Ocellus phase is its own entry) and compare up to 4 setups. Click a gear slot to
   search for an item. Pick an attack style next to the gear. The star slot top-left is the spec weapon.
   Buffs (prayer, potions, thrall, Slayer task, Mark of Darkness, Charge) apply to every setup.
-- Best setup: finds the best gear for melee, ranged or magic on the target. Use as 1/2/3 copies a result
-  into a setup.
+- Best setup: finds the best build for each style (melee stab, slash and crush, ranged, magic) and ranks
+  them on the target. Use as 1/2/3 copies a result into a setup.
+- Your bank: Gear to use > Import a bank. In RuneLite, open the Bank Memory plugin panel, right-click your
+  bank (Current bank) or a save (Saved banks), choose "Copy item data to clipboard" and paste it in GearCalc.
+  You can keep several banks and switch between them and All gear in the same menu.
 - Defence reduction: count the special attacks that hit. Stats after specials shows the result. The same
   drains feed the DPS screen.
 - Freeze check: freeze chance for every freeze spell, with and without Augury and the Salve amulet (ei).

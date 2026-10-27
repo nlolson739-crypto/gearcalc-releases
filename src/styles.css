@@ -221,3 +221,9 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
   .data-status { margin-left: 0; }
   .skills-after { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* bank import */
+.link-btn { background: none; border: 0; padding: 0; color: var(--gold); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.link-btn:hover { color: var(--text-strong); }
+.bank-text { min-height: 140px; resize: vertical; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--control); background: var(--inset); color: var(--text-strong); font: 12px/1.4 var(--mono); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }

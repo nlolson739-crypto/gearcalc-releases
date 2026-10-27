@@ -8,6 +8,7 @@ import {
   ARM_PRAYERS, BRAIN_PRAYERS, OFFENSIVE_PRAYERS, PrayerMap,
 } from '@/enums/Prayer';
 import { equipment } from '~/engine';
+import type { Bank } from '~/bank';
 
 export interface Setup {
   id: string;
@@ -41,6 +42,10 @@ export interface AppState {
   reductions: DefenceReductions;
   buffs: Buffs;
   setups: Setup[];
+  /** banks imported from RuneLite's Bank Memory plugin */
+  banks: Bank[];
+  /** the bank the best-setup search is limited to; null searches all gear */
+  activeBank: string | null;
 }
 
 /**
@@ -93,6 +98,8 @@ export const DEFAULT_STATE: AppState = {
       specWeapon: findItem('Elder maul')?.id,
     },
   ],
+  banks: [],
+  activeBank: null,
 };
 
 const STORAGE_KEY = 'gearcalc-state-v1';

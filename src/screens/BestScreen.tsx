@@ -11,6 +11,8 @@ import {
 import {
   fmtTime, itemImage, MonsterPicker, Panel, Segmented,
 } from '~/ui/common';
+import { ownedChecker } from '~/bank';
+import BankPicker from '~/ui/BankPicker';
 
 type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
 type Family = 'melee' | 'ranged' | 'magic';
@@ -44,19 +46,20 @@ const SPELL_POOL = allSpells.filter((s) => s.max_hit > 0 && !SPECIAL_STAFF_SPELL
 
 // Items that only exist inside minigames, events or other game modes (per their wiki pages), so the search skips them.
 const RESTRICTED = /deadman|wilderness wars|wilderness champion|emir's arena|soul wars|castle wars|last man standing|trailblazer|leagues|unobtainable|\bbeta\b|historical|\(bh\)|\(wrapped\)/i;
-const UNUSABLE_VERSIONS = ['Broken', 'Uncharged', 'Inactive'];
+// "0" is fully degraded Barrows, which has no stats
+const UNUSABLE_VERSIONS = ['Broken', 'Uncharged', 'Inactive', '0'];
 const GAUNTLET = new Set([...GAUNTLET_EQUIPMENT_IDS, ...CORRUPTED_GAUNTLET_EQUIPMENT_IDS]);
 const usable = (e: EquipmentPiece) => !GAUNTLET.has(e.id) && !RESTRICTED.test(e.name) && !RESTRICTED.test(e.version) && !UNUSABLE_VERSIONS.includes(e.version)
   // novelty "weapons" (Gnomeball, Ghost buster 500, ...) have no real attack speed in the data, which inflates their DPS
   && (e.slot !== 'weapon' || e.speed > 0);
 
 // One entry per item name (the data has e.g. Locked / Normal copies of the same item).
-const unique = (() => {
+const allUnique = (() => {
   const seen = new Map<string, EquipmentPiece>();
   for (const e of equipment.filter(usable)) {
     const k = `${e.slot}:${e.name}`;
     const cur = seen.get(k);
-    if (!cur || (cur.version && (!e.version || ['Charged', 'Normal', 'Active'].includes(e.version)))) seen.set(k, e);
+    if (!cur || (cur.version && (!e.version || ['Charged', 'Normal', 'Active', 'Undamaged'].includes(e.version)))) seen.set(k, e);
   }
   return [...seen.values()];
 })();
@@ -108,6 +111,7 @@ export default function BestScreen({ state, setState }: Props) {
   const [status, setStatus] = useState('');
   const [found, setFound] = useState<Found[]>([]);
   const [checked, setChecked] = useState(0);
+  const [note, setNote] = useState('');
   const cancel = useRef(false);
 
   const monster = targetMonster(state);
@@ -133,11 +137,17 @@ export default function BestScreen({ state, setState }: Props) {
   async function run() {
     cancel.current = false;
     setFound([]);
+    setNote('');
     setProgress(0);
     let evals = 0;
     const spec = goal === 'spec';
+    // Limit the search to one imported bank, or search every item.
+    const bank = state.banks.find((b) => b.id === state.activeBank);
+    const owned = bank ? ownedChecker(bank) : () => true;
+    const unique = allUnique.filter(owned);
+    const missing: string[] = [];
     const cats: Category[] = spec
-      ? SPEC_WEAPONS.map((n) => findItem(n)).filter((w): w is EquipmentPiece => !!w)
+      ? SPEC_WEAPONS.map((n) => findItem(n)).filter((w): w is EquipmentPiece => !!w && owned(w))
         .map((w) => ({ id: `spec:${w.name}`, family: 'melee' as Family, label: w.name, type: 'crush' as AttackType, weapon: w }))
       : CATEGORIES.filter((c) => families.includes(c.family));
     const results: Found[] = [];
@@ -153,6 +163,7 @@ export default function BestScreen({ state, setState }: Props) {
       }
       const candidates = cat.weapon ? [cat.weapon]
         : distinctStats(unique.filter((e) => e.slot === 'weapon' && stylesForType(e, cat.type).length > 0));
+      if (!candidates.length) { missing.push(cat.label); continue; }
 
       // Spells worth trying on staves: the strongest against this target with a reference staff.
       let spells: string[] = [];
@@ -243,6 +254,8 @@ export default function BestScreen({ state, setState }: Props) {
     }
     setChecked(evals);
     setStatus(cancel.current ? 'Stopped.' : '');
+    setNote(spec && !cats.length ? 'This bank has none of the spec weapons.'
+      : missing.length ? `No weapons in this bank for: ${missing.join(', ')}.` : '');
     setProgress(null);
   }
 
@@ -255,8 +268,10 @@ export default function BestScreen({ state, setState }: Props) {
       <aside className="side" aria-label="Search options">
         <Panel title="Find the best setup">
           <MonsterPicker value={state.target} onChange={(k) => setState((s) => ({ ...s, target: k }))} extra={EXTRA_MONSTERS} />
+          <div className="small" style={{ color: 'var(--soft)' }}>Gear to use</div>
+          <BankPicker state={state} setState={setState} />
           <div className="small" style={{ color: 'var(--soft)' }}>Rank by</div>
-          <Segmented<Goal> label="Rank by" value={goal} onChange={setGoal} options={[{ value: 'dps', label: 'DPS' }, { value: 'ttk', label: 'Time to kill' }, { value: 'spec', label: 'Spec drain' }]} />
+          <Segmented<Goal> label="Rank by" value={goal} onChange={(g) => { setGoal(g); setFound([]); setChecked(0); setNote(''); }} options={[{ value: 'dps', label: 'DPS' }, { value: 'ttk', label: 'Time to kill' }, { value: 'spec', label: 'Spec drain' }]} />
           {goal !== 'spec' && (
             <>
               <div className="small" style={{ color: 'var(--soft)' }}>Styles to include</div>
@@ -292,6 +307,7 @@ export default function BestScreen({ state, setState }: Props) {
           <h1>{goal === 'spec' ? 'Best defence-drain specs' : 'Best builds, all styles ranked'}</h1>
           <span className="small muted">{checked ? `${checked.toLocaleString()} combinations checked` : 'Not searched yet'}</span>
         </div>
+        {note && <div className="small muted">{note}</div>}
         {found.map((f, i) => {
           const g = gearOf(f.setup);
           return (
@@ -336,7 +352,8 @@ export default function BestScreen({ state, setState }: Props) {
           spells), takes the best 25,
           gives each a quick gear pass, then fully optimises the best 3 by swapping one slot at a time. Minigame, event and
           other-mode items are skipped, and set bonuses that need several pieces at once (e.g. Void) may be missed. Every
-          number comes from the OSRS Wiki DPS engine. Budget and owned-items filters aren't built yet.
+          number comes from the OSRS Wiki DPS engine. Choose one of your imported banks under Gear to use to search only
+          the gear you own.
         </p>
       </section>
     </main>

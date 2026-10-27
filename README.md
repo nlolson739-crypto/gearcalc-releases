@@ -20,7 +20,9 @@ monster pictures.
   Vulnerability and Accursed sceptre, with each boss's drain floor. Raid presets for The Fractured Archive, Chambers of
   Xeric, Theatre of Blood and Tombs of Amascut.
 - **Freeze check:** every freeze spell, with and without Augury and the Salve amulet (ei).
-- **Best setup:** searches gear for the highest DPS, fastest kill or best defence-drain spec.
+- **Best setup:** finds the best build for each style (melee stab / slash / crush, ranged, magic) and ranks them, by
+  highest DPS, fastest kill or best defence-drain spec. It searches all gear, or only the gear in a bank imported from
+  RuneLite's Bank Memory plugin.
 
 ## Sources
 
