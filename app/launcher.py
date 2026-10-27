@@ -7,6 +7,7 @@ import socket
 import sys
 import threading
 
+import bottle
 import webview
 
 import updater
@@ -30,6 +31,21 @@ def version() -> str:
         return 'dev'
 
 
+# pywebview's server means to send "no-cache", but bottle.static_file returns its own response, which drops those
+# headers. Without them WebView2 may keep showing the previous version's page after an update, so add the header to
+# every file it serves (WebView2 still revalidates cheaply with Last-Modified).
+_static_file = bottle.static_file
+
+
+def _static_file_no_cache(*args, **kwargs):
+    r = _static_file(*args, **kwargs)
+    r.set_header('Cache-Control', 'no-cache')
+    return r
+
+
+bottle.static_file = _static_file_no_cache
+
+
 def clear_stale_cache(storage: str) -> None:
     """After an update, drop WebView2's cached copy of the old page. The page is served without cache headers, so
     WebView2 can keep showing the previous version's index.html. Saved setups (Local Storage) are kept."""
@@ -41,8 +57,13 @@ def clear_stale_cache(storage: str) -> None:
     except OSError:
         pass
     profile = os.path.join(storage, 'EBWebView', 'Default')
+    errors = []
     for name in ('Cache', 'Code Cache', 'GPUCache', 'Service Worker'):
-        shutil.rmtree(os.path.join(profile, name), ignore_errors=True)
+        path = os.path.join(profile, name)
+        if os.path.isdir(path):
+            shutil.rmtree(path, onexc=lambda _f, p, e: errors.append(f'{p}: {e}'))
+    if errors:
+        logging.info('could not clear all of the web cache: %s', '; '.join(errors[:3]))
     try:
         with open(marker, 'w', encoding='utf-8') as f:
             f.write(version())
