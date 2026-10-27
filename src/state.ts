@@ -1,0 +1,104 @@
+import { useEffect, useState } from 'react';
+import {
+  findItem, findMonster, monsterKey, monsters, NO_REDUCTIONS, Potion, prepareMonster, Prayer,
+  type DefenceReductions, type EquipmentPiece, type Monster, type Slot,
+} from '~/engine';
+import { XARTH_CORPSE } from '~/rules/wiki';
+import { equipment } from '~/engine';
+
+export interface Setup {
+  id: string;
+  name: string;
+  color: string;
+  gear: Partial<Record<Slot, number>>;
+  style?: string;
+  specWeapon?: number;
+}
+
+export interface Buffs {
+  prayer: Prayer | null;
+  potions: Potion[];
+  thrall: 0 | 1 | 2 | 3;
+  onSlayerTask: boolean;
+  markOfDarkness: boolean;
+  charge: boolean;
+}
+
+export interface AppState {
+  target: string;
+  reductions: DefenceReductions;
+  buffs: Buffs;
+  setups: Setup[];
+}
+
+export const SETUP_COLORS = ['#f0b44c', '#7cb4ff', '#5fd0b5', '#e58ad8'];
+
+const ids = (names: Partial<Record<Slot, string>>): Partial<Record<Slot, number>> => Object.fromEntries(
+  Object.entries(names).map(([s, n]) => [s, findItem(n!)?.id]).filter(([, id]) => id !== undefined),
+);
+
+const p3 = findMonster('Ocellus', 'Phase 3');
+
+const torva = {
+  head: 'Torva full helm', cape: 'Infernal cape', neck: 'Amulet of rancour', weapon: 'Scythe of vitur', body: 'Torva platebody',
+  legs: 'Torva platelegs', hands: 'Ferocious gloves', feet: 'Primordial boots', ring: 'Ultor ring',
+};
+
+export const DEFAULT_STATE: AppState = {
+  target: p3 ? monsterKey(p3) : monsterKey(monsters[0]),
+  reductions: { ...NO_REDUCTIONS, elderMaul: 2 },
+  buffs: {
+    prayer: Prayer.PIETY, potions: [Potion.SUPER_COMBAT], thrall: 3, onSlayerTask: false, markOfDarkness: false, charge: false,
+  },
+  setups: [
+    { id: 'a', name: 'Setup 1 · Torva', color: SETUP_COLORS[0], gear: ids(torva), style: 'Jab', specWeapon: findItem('Elder maul')?.id },
+    { id: 'b', name: 'Setup 2 · Torva', color: SETUP_COLORS[1], gear: ids(torva), style: 'Chop', specWeapon: findItem('Bandos godsword')?.id },
+    {
+      id: 'c',
+      name: 'Setup 3 · Inquisitor',
+      color: SETUP_COLORS[2],
+      gear: ids({
+        ...torva, head: "Inquisitor's great helm", body: "Inquisitor's hauberk", legs: "Inquisitor's plateskirt",
+      }),
+      style: 'Jab',
+      specWeapon: findItem('Elder maul')?.id,
+    },
+  ],
+};
+
+const STORAGE_KEY = 'gearcalc-state-v1';
+
+function load(): AppState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ...DEFAULT_STATE, ...JSON.parse(raw) };
+  } catch { /* private window or blocked storage: use defaults */ }
+  return DEFAULT_STATE;
+}
+
+export function useAppState() {
+  const [state, setState] = useState<AppState>(load);
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* ignore */ }
+  }, [state]);
+  return [state, setState] as const;
+}
+
+// ---- lookups ------------------------------------------------------------------------------------------------
+
+const byId = new Map(equipment.map((e) => [e.id, e]));
+export const itemById = (id: number | undefined): EquipmentPiece | null => (id === undefined ? null : byId.get(id) ?? null);
+
+export const EXTRA_MONSTERS = [{ key: monsterKey(XARTH_CORPSE), label: 'Corpse (Xarth)', monster: XARTH_CORPSE }];
+
+export function baseMonster(key: string): Omit<Monster, 'inputs'> {
+  return EXTRA_MONSTERS.find((m) => m.key === key)?.monster
+    ?? monsters.find((m) => monsterKey(m) === key)
+    ?? monsters[0];
+}
+
+export const targetMonster = (s: AppState): Monster => prepareMonster(baseMonster(s.target), s.reductions);
+
+export const gearOf = (setup: Setup) => Object.fromEntries(
+  Object.entries(setup.gear).map(([slot, id]) => [slot, itemById(id)]),
+) as Partial<Record<Slot, EquipmentPiece | null>>;

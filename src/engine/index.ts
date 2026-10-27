@@ -35,12 +35,17 @@ export const equipment: EquipmentPiece[] = availableEquipment;
 export const allSpells: Spell[] = spells;
 const baseMonsters = getMonsters();
 
-export const monsterKey = (m: { id: number, version: string }) => `${m.id}:${m.version}`;
+export const monsterKey = (m: { id: number, version?: string }) => `${m.id}:${m.version ?? ''}`;
 export const monsters = baseMonsters;
 
-export const findItem = (name: string, version = ''): EquipmentPiece | undefined => equipment.find(
-  (e) => e.name === name && (!version || e.version === version),
-) ?? equipment.find((e) => e.name.toLowerCase() === name.toLowerCase());
+/** Finds an item by name; without a version it prefers the plain entry, then the charged one. */
+export const findItem = (name: string, version = ''): EquipmentPiece | undefined => {
+  const matches = equipment.filter((e) => e.name.toLowerCase() === name.toLowerCase());
+  if (version) return matches.find((e) => e.version === version);
+  return matches.find((e) => !e.version)
+    ?? matches.find((e) => ['Charged', 'Normal', 'Active'].includes(e.version))
+    ?? matches[0];
+};
 
 export const findMonster = (name: string, version = '') => baseMonsters.find(
   (m) => m.name === name && (!version || m.version === version),

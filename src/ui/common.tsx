@@ -1,0 +1,155 @@
+import { useMemo, useState, type ReactNode } from 'react';
+import { getCdnImage, getWikiImage } from '@/utils';
+import { equipment, monsters, monsterKey, type EquipmentPiece, type Slot } from '~/engine';
+
+export const itemImage = (e: EquipmentPiece | null | undefined) => (e?.image ? getCdnImage(`equipment/${e.image}`) : '');
+export const wikiImage = (file: string) => getWikiImage(file);
+
+export function Panel({ title, children, className = '' }: { title?: ReactNode, children: ReactNode, className?: string }) {
+  return (
+    <section className={`panel ${className}`}>
+      {title && <div className="panel-title">{title}</div>}
+      {children}
+    </section>
+  );
+}
+
+export function IconToggle({
+  label, icon, on, onClick,
+}: { label: string, icon: string, on: boolean, onClick: () => void }) {
+  return (
+    <button type="button" className={`icon-toggle${on ? ' on' : ''}`} aria-label={label} aria-pressed={on} title={label} onClick={onClick}>
+      <img src={icon} alt="" />
+    </button>
+  );
+}
+
+export function IconRow({ label, children }: { label: string, children: ReactNode }) {
+  return (
+    <div className="icon-row">
+      <span className="icon-row-label">{label}</span>
+      <div role="group" aria-label={label} className="icon-row-items">{children}</div>
+    </div>
+  );
+}
+
+export function Stepper({
+  value, onChange, min = 0, max = 99, label, step = 1,
+}: { value: number, onChange: (v: number) => void, min?: number, max?: number, label: string, step?: number }) {
+  return (
+    <div className="stepper">
+      <button type="button" aria-label={`Lower ${label}`} onClick={() => onChange(Math.max(min, value - step))}>−</button>
+      <span className="mono">{value}</span>
+      <button type="button" aria-label={`Raise ${label}`} onClick={() => onChange(Math.min(max, value + step))}>+</button>
+    </div>
+  );
+}
+
+export function Segmented<T extends string>({
+  options, value, onChange, label,
+}: { options: { value: T, label: ReactNode, detail?: string }[], value: T, onChange: (v: T) => void, label: string }) {
+  return (
+    <div role="group" aria-label={label} className="segmented">
+      {options.map((o) => (
+        <button type="button" key={o.value} className={o.value === value ? 'on' : ''} aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
+          <span>{o.label}</span>
+          {o.detail && <small>{o.detail}</small>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Search box over the wiki equipment list for one slot. */
+export function ItemPicker({
+  slot, value, onChange, placeholder,
+}: { slot: Slot | 'any-weapon', value: EquipmentPiece | null, onChange: (e: EquipmentPiece | null) => void, placeholder?: string }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const results = useMemo(() => {
+    if (!open) return [];
+    const nq = norm(q);
+    const pool = equipment.filter((e) => (slot === 'any-weapon' ? e.slot === 'weapon' : e.slot === slot));
+    const hits = nq ? pool.filter((e) => norm(e.name).includes(nq)) : pool;
+    return hits.sort((a, b) => (norm(a.name).startsWith(nq) ? 0 : 1) - (norm(b.name).startsWith(nq) ? 0 : 1) || a.name.localeCompare(b.name)).slice(0, 30);
+  }, [q, open, slot]);
+  return (
+    <div className="item-picker">
+      <div className="item-picker-current">
+        <span className="item-icon">{value && <img src={itemImage(value)} alt="" />}</span>
+        <input
+          aria-label={`${slot} item`}
+          title={value ? value.name + (value.version ? ` (${value.version})` : '') : undefined}
+          value={open ? q : (value?.name ?? '')}
+          placeholder={placeholder ?? 'None'}
+          onFocus={() => { setOpen(true); setQ(''); }}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        {value && <button type="button" className="clear" aria-label={`Clear ${slot}`} onClick={() => onChange(null)}>×</button>}
+      </div>
+      {open && results.length > 0 && (
+        <ul className="item-picker-list" role="listbox">
+          {results.map((e) => (
+            <li key={e.id}>
+              <button type="button" onMouseDown={() => { onChange(e); setOpen(false); }}>
+                <span className="item-icon"><img src={itemImage(e)} alt="" loading="lazy" /></span>
+                <span>{e.name}{e.version ? <small> ({e.version})</small> : null}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Search box over the wiki monster list (each version, e.g. Ocellus phases, is its own entry). */
+export function MonsterPicker({ value, onChange, extra = [] }: {
+  value: string, onChange: (key: string) => void, extra?: { key: string, label: string }[],
+}) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const all = useMemo(() => [
+    ...extra,
+    ...monsters.map((m) => ({ key: monsterKey(m), label: m.name + (m.version ? ` · ${m.version}` : '') })),
+  ], [extra]);
+  const current = all.find((m) => m.key === value)?.label ?? '';
+  const results = useMemo(() => {
+    const nq = norm(q);
+    return (nq ? all.filter((m) => norm(m.label).includes(nq)) : all).slice(0, 30);
+  }, [q, all]);
+  return (
+    <div className="item-picker">
+      <div className="item-picker-current">
+        <input
+          aria-label="Monster"
+          value={open ? q : current}
+          onFocus={() => { setOpen(true); setQ(''); }}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
+      {open && (
+        <ul className="item-picker-list" role="listbox">
+          {results.map((m) => (
+            <li key={m.key}><button type="button" onMouseDown={() => { onChange(m.key); setOpen(false); }}>{m.label}</button></li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export const pct = (x: number) => `${(Math.round(x * 1000) / 10).toFixed(1)}%`;
+export const fmtTime = (sec: number | undefined) => {
+  if (sec === undefined || !Number.isFinite(sec)) return '—';
+  const s = Math.round(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+export function WikiBadge({ approximate }: { approximate?: boolean }) {
+  return <span className="wiki-badge">{approximate ? 'WIKI RULE · APPROX.' : 'WIKI RULE'}</span>;
+}
