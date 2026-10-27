@@ -24,7 +24,7 @@ export function playerFor(setup: Setup, buffs: Buffs, monster: Monster, weaponOv
     name: setup.name,
     gear,
     styleName: styleOverride ?? setup.style,
-    prayers: buffs.prayer === null ? [] : [buffs.prayer],
+    prayers: buffs.prayers ?? [],
     potions: buffs.potions,
     spell: weaponOverride === undefined && setup.spell ? allSpells.find((s) => s.name === setup.spell) ?? null : null,
     buffs: {

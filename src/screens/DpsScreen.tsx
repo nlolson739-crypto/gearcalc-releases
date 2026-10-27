@@ -1,41 +1,26 @@
 import { useMemo } from 'react';
 import specArt from '@/public/img/misc/power.webp';
-import sunfireArt from '@/public/img/misc/sunfire_rune.webp';
-import fireArt from '@/public/img/misc/fragment_fire.png';
-import waterArt from '@/public/img/misc/fragment_water.png';
-import earthArt from '@/public/img/misc/fragment_earth.png';
-import windArt from '@/public/img/misc/fragment_wind.png';
 import { PotionMap } from '@/utils';
 import { PrayerMap } from '@/enums/Prayer';
 import { getCdnImage } from '@/utils';
 import {
-  allSpells, findItem, Potion, Prayer, SLOTS, scaledMonster, stylesFor, type Slot,
+  allSpells, findItem, SLOTS, scaledMonster, stylesFor, type Slot,
 } from '~/engine';
-import { runSetup, runSpec, thrallDps } from '~/calc';
+import { runSetup, runSpec } from '~/calc';
 import {
   baseMonster, EXTRA_MONSTERS, gearOf, itemById, SETUP_COLORS, targetMonster, type AppState, type Buffs, type Setup,
 } from '~/state';
-import { THRALLS, THRALL_SOURCE, wikiUrl } from '~/rules/wiki';
 import {
-  fmtTime, IconRow, IconToggle, itemImage, MonsterPicker, Panel, pct, SlotButton, Stepper, wikiImage,
+  fmtTime, itemImage, MonsterPicker, Panel, pct, SlotButton, Stepper,
 } from '~/ui/common';
+import BuffBar from '~/ui/BuffBar';
 
 type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
 
-const PRAYERS: Prayer[] = [Prayer.PIETY, Prayer.CHIVALRY, Prayer.RIGOUR, Prayer.AUGURY];
-const POTIONS: Potion[] = [Potion.SUPER_COMBAT, Potion.OVERLOAD_PLUS, Potion.SMELLING_SALTS, Potion.RANGING, Potion.SATURATED_HEART, Potion.FORGOTTEN_BREW];
 const SPELLBOOKS: [string, typeof allSpells][] = (['standard', 'ancient', 'arceuus'] as const).map((b) => [
   b[0].toUpperCase() + b.slice(1),
   allSpells.filter((sp) => sp.spellbook === b && sp.max_hit > 0),
 ]);
-
-// Fractured Archive elemental fragments (wiki "Elemental fragments"): one per element, +2 max hit each.
-const FRAGMENTS = [
-  { key: 'fragFire', name: 'Fragment of burning fire', element: 'fire', art: fireArt },
-  { key: 'fragWater', name: 'Fragment of deep water', element: 'water', art: waterArt },
-  { key: 'fragEarth', name: 'Fragment of living earth', element: 'earth', art: earthArt },
-  { key: 'fragAir', name: 'Fragment of whispering wind', element: 'air', art: windArt },
-] as const;
 
 const SLOT_LABEL: Record<Slot, string> = {
   head: 'Head', cape: 'Cape', neck: 'Neck', ammo: 'Ammo', weapon: 'Weapon', body: 'Body', shield: 'Shield', legs: 'Legs', hands: 'Hands', feet: 'Feet', ring: 'Ring',
@@ -54,7 +39,7 @@ export default function DpsScreen({ state, setState }: Props) {
   const deltas = useMemo(() => {
     const rows: { label: string, values: number[] }[] = [];
     const diff = (b: Buffs) => state.setups.map((s, i) => runSetup(s, b, monster).totalDps - results[i].totalDps);
-    if (buffs.prayer !== null) rows.push({ label: `Without ${PrayerMap[buffs.prayer].name}`, values: diff({ ...buffs, prayer: null }) });
+    for (const p of buffs.prayers ?? []) rows.push({ label: `Without ${PrayerMap[p].name}`, values: diff({ ...buffs, prayers: buffs.prayers.filter((x) => x !== p) }) });
     for (const p of buffs.potions) rows.push({ label: `Without ${PotionMap[p].name}`, values: diff({ ...buffs, potions: buffs.potions.filter((x) => x !== p) }) });
     if (buffs.thrall) rows.push({ label: 'Without thrall', values: diff({ ...buffs, thrall: 0 }) });
     if (buffs.onSlayerTask) rows.push({ label: 'Off Slayer task', values: diff({ ...buffs, onSlayerTask: false }) });
@@ -112,36 +97,7 @@ export default function DpsScreen({ state, setState }: Props) {
         </Panel>
 
         <Panel title="Buffs · all setups">
-          <IconRow label="Prayer">
-            {PRAYERS.map((p) => (
-              <IconToggle key={p} label={PrayerMap[p].name} icon={PrayerMap[p].image as unknown as string} on={buffs.prayer === p} onClick={() => setBuffs((b) => ({ ...b, prayer: b.prayer === p ? null : p }))} />
-            ))}
-          </IconRow>
-          <IconRow label="Potions">
-            {POTIONS.map((p) => (
-              <IconToggle key={p} label={PotionMap[p].name} icon={PotionMap[p].image as unknown as string} on={buffs.potions.includes(p)} onClick={() => setBuffs((b) => ({ ...b, potions: b.potions.includes(p) ? b.potions.filter((x) => x !== p) : [...b.potions, p] }))} />
-            ))}
-          </IconRow>
-          <IconRow label="Thrall">
-            {THRALLS.map((t) => (
-              <IconToggle key={t.tier} label={`${t.name} thrall (0–${t.maxHit}, ${t.dps} DPS)`} icon={wikiImage(t.icon)} on={buffs.thrall === t.tier} onClick={() => setBuffs((b) => ({ ...b, thrall: b.thrall === t.tier ? 0 : t.tier }))} />
-            ))}
-          </IconRow>
-          <IconRow label="Other">
-            <IconToggle label="On Slayer task" icon={wikiImage('Slayer helmet (i).png')} on={buffs.onSlayerTask} onClick={() => setBuffs((b) => ({ ...b, onSlayerTask: !b.onSlayerTask }))} />
-            <IconToggle label="Mark of Darkness" icon={wikiImage('Mark of Darkness.png')} on={buffs.markOfDarkness} onClick={() => setBuffs((b) => ({ ...b, markOfDarkness: !b.markOfDarkness }))} />
-            <IconToggle label="Charge" icon={wikiImage('Charge.png')} on={buffs.charge} onClick={() => setBuffs((b) => ({ ...b, charge: !b.charge }))} />
-            <IconToggle label="Sunfire runes: fire spell hits deal at least 10% of max hit" icon={sunfireArt} on={!!buffs.sunfire} onClick={() => setBuffs((b) => ({ ...b, sunfire: !b.sunfire }))} />
-          </IconRow>
-          <IconRow label="Fragments">
-            {FRAGMENTS.map((f) => (
-              <IconToggle key={f.key} label={`${f.name}: +2 max hit to ${f.element} spells`} icon={f.art} on={!!buffs[f.key]} onClick={() => setBuffs((b) => ({ ...b, [f.key]: !b[f.key] }))} />
-            ))}
-          </IconRow>
-          <div className="small muted">
-            {buffs.thrall ? <>Thrall adds {thrallDps(buffs.thrall)} DPS (always hits, <a href={wikiUrl(THRALL_SOURCE.page)} target="_blank" rel="noreferrer">wiki</a>). </> : null}
-            Click an icon to turn it on, again to turn it off.
-          </div>
+          <BuffBar buffs={buffs} setBuffs={setBuffs} />
         </Panel>
       </aside>
 

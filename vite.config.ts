@@ -26,6 +26,7 @@ export default defineConfig({
     port: 5178,
     strictPort: true,
     // The desktop build folders contain a copy of the app; watching them confuses hot reload.
-    watch: { ignored: ['**/dist/**', '**/dist-app/**', '**/release/**', '**/build/**', '**/app/.venv/**'] },
+    // Polling, because native file events on this drive sometimes miss edits (the CSS especially).
+    watch: { usePolling: true, interval: 300, ignored: ['**/dist/**', '**/dist-app/**', '**/release/**', '**/build/**', '**/app/.venv/**', '**/vendor/**/node_modules/**', '**/.git/**'] },
   },
 });

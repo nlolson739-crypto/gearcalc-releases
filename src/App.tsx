@@ -4,6 +4,7 @@ import DpsScreen from './screens/DpsScreen';
 import DefenceScreen from './screens/DefenceScreen';
 import FreezeScreen from './screens/FreezeScreen';
 import BestScreen from './screens/BestScreen';
+import UpdatePrompt from './ui/UpdatePrompt';
 import vendorLock from '../vendor.lock?raw';
 
 const SCREENS = [
@@ -49,6 +50,7 @@ export default function App() {
       {screen === 'best' && <BestScreen state={state} setState={setState} />}
       {screen === 'defence' && <DefenceScreen state={state} setState={setState} />}
       {screen === 'freeze' && <FreezeScreen />}
+      <UpdatePrompt />
     </div>
   );
 }

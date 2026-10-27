@@ -57,6 +57,19 @@ h1 { margin: 0; font-size: 22px; font-weight: 600; }
 .stat span:first-child { font-size: 12px; color: var(--muted); }
 .stat span:last-child { font-family: var(--mono); font-size: 17px; font-weight: 600; }
 
+.buff-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.buff-picker { position: relative; min-width: 0; }
+.buff-btn { width: 100%; min-height: 54px; padding: 6px 26px 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--inset); display: flex; flex-direction: column; align-items: flex-start; gap: 3px; position: relative; text-align: left; }
+.buff-btn:hover, .buff-btn.open { border-color: var(--gold); }
+.buff-btn-label { font-size: 11px; font-weight: 600; letter-spacing: 0.6px; color: var(--muted); text-transform: uppercase; }
+.buff-btn-icons { display: flex; align-items: center; gap: 4px; min-height: 24px; }
+.buff-btn-icons img { width: 24px; height: 24px; object-fit: contain; image-rendering: pixelated; }
+.buff-caret { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; }
+.buff-pop { position: absolute; z-index: 40; left: 0; top: calc(100% + 4px); width: 320px; padding: 10px; background: #20242b; border: 1px solid var(--control); border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column; gap: 8px; }
+.buff-picker:nth-child(2n) .buff-pop { left: auto; right: 0; }
+.buff-group { display: flex; align-items: flex-start; gap: 8px; }
+.buff-group > span { width: 52px; flex-shrink: 0; padding-top: 12px; font-size: 12px; color: var(--muted); }
+.buff-group > div, .buff-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 .maul-row { display: flex; align-items: center; gap: 10px; background: var(--inset); border-radius: 8px; padding: 4px 6px 4px 8px; }
 .maul-row img { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; }
 .maul-row > span { flex: 1; font-size: 13px; color: var(--soft); }
@@ -189,6 +202,17 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .metric span:last-child { font-size: 18px; font-weight: 600; }
 .progress { height: 6px; border-radius: 3px; background: var(--inset); overflow: hidden; }
 .progress > div { height: 6px; background: var(--gold); transition: width 0.2s; }
+
+/* update prompt (desktop app only) */
+.update-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(8, 9, 12, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.update-card { width: 420px; max-width: 100%; background: var(--panel); border: 1px solid var(--control); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); }
+.update-card h2 { margin: 0; font-size: 20px; }
+.update-card p { margin: 0; }
+.pill { padding: 5px 10px; border-radius: 999px; background: var(--inset); border: 1px solid var(--line); font-family: var(--mono); font-size: 13px; }
+.pill.gold { border-color: var(--gold); color: var(--gold); }
+.row.end { justify-content: flex-end; }
+.progress.big { height: 10px; border-radius: 5px; }
+.progress.big > div { height: 10px; }
 
 @media (max-width: 640px) {
   .topbar, .page { padding-left: 16px; padding-right: 16px; }

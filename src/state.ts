@@ -4,6 +4,9 @@ import {
   type DefenceReductions, type EquipmentPiece, type Monster, type Slot,
 } from '~/engine';
 import { XARTH_CORPSE } from '~/rules/wiki';
+import {
+  ARM_PRAYERS, BRAIN_PRAYERS, OFFENSIVE_PRAYERS, PrayerMap,
+} from '@/enums/Prayer';
 import { equipment } from '~/engine';
 
 export interface Setup {
@@ -18,7 +21,8 @@ export interface Setup {
 }
 
 export interface Buffs {
-  prayer: Prayer | null;
+  /** Offensive prayers. Each setup uses the ones matching its combat style (the engine filters by style). */
+  prayers: Prayer[];
   potions: Potion[];
   thrall: 0 | 1 | 2 | 3;
   onSlayerTask: boolean;
@@ -39,6 +43,23 @@ export interface AppState {
   setups: Setup[];
 }
 
+/**
+ * Turn a prayer on or off the way the game allows. Same rules as the wiki calculator's togglePlayerPrayer, except
+ * that they apply within one combat style: setups are separate loadouts, so a melee, a ranged and a magic prayer can
+ * all be chosen and each setup uses its own.
+ */
+export function togglePrayer(list: Prayer[], p: Prayer): Prayer[] {
+  if (list.includes(p)) return list.filter((x) => x !== p);
+  const style = PrayerMap[p].combatStyle;
+  const keep = list.filter((x) => {
+    if (PrayerMap[x].combatStyle !== style || !OFFENSIVE_PRAYERS.includes(x)) return true;
+    if (BRAIN_PRAYERS.includes(p)) return ARM_PRAYERS.includes(x);
+    if (ARM_PRAYERS.includes(p)) return BRAIN_PRAYERS.includes(x);
+    return false;
+  });
+  return [...keep, p];
+}
+
 export const SETUP_COLORS = ['#f0b44c', '#7cb4ff', '#5fd0b5', '#e58ad8'];
 
 const ids = (names: Partial<Record<Slot, string>>): Partial<Record<Slot, number>> => Object.fromEntries(
@@ -56,7 +77,7 @@ export const DEFAULT_STATE: AppState = {
   target: p3 ? monsterKey(p3) : monsterKey(monsters[0]),
   reductions: { ...NO_REDUCTIONS, elderMaul: 2 },
   buffs: {
-    prayer: Prayer.PIETY, potions: [Potion.SUPER_COMBAT], thrall: 3, onSlayerTask: false, markOfDarkness: false, charge: false,
+    prayers: [Prayer.PIETY, Prayer.RIGOUR, Prayer.AUGURY], potions: [Potion.SUPER_COMBAT], thrall: 3, onSlayerTask: false, markOfDarkness: false, charge: false,
   },
   setups: [
     { id: 'a', name: 'Setup 1 · Torva', color: SETUP_COLORS[0], gear: ids(torva), style: 'Jab', specWeapon: findItem('Elder maul')?.id },
@@ -79,7 +100,15 @@ const STORAGE_KEY = 'gearcalc-state-v1';
 function load(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_STATE, ...JSON.parse(raw) };
+    if (raw) {
+      const saved = JSON.parse(raw);
+      // v0.24 and earlier kept a single `prayer`
+      if (saved.buffs && !Array.isArray(saved.buffs.prayers)) {
+        saved.buffs.prayers = saved.buffs.prayer === null || saved.buffs.prayer === undefined ? [] : [saved.buffs.prayer];
+        delete saved.buffs.prayer;
+      }
+      return { ...DEFAULT_STATE, ...saved };
+    }
   } catch { /* private window or blocked storage: use defaults */ }
   return DEFAULT_STATE;
 }
