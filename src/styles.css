@@ -141,6 +141,10 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .spec-cell.active { border-color: #4a4030; }
 .spec-cell img { width: 36px; height: 36px; object-fit: contain; image-rendering: pixelated; }
 .spec-cell .stepper span { flex: 1; font-size: 20px; }
+.dmg-input { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.dmg-input input { width: 100%; min-width: 0; height: 44px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--control); background: var(--panel); color: var(--text-strong); font-family: var(--mono); font-size: 20px; font-weight: 600; text-align: center; -moz-appearance: textfield; }
+.dmg-input input::-webkit-outer-spin-button, .dmg-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.dmg-input span { font-size: 12px; color: var(--muted); }
 .skills-after { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .skills-after > div { display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--inset); border-radius: 10px; padding: 10px 4px; }
 .skills-after .now { font-family: var(--mono); font-size: 22px; font-weight: 600; }

@@ -11,15 +11,16 @@ import {
 type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
 
 type CountKey = 'elderMaul' | 'dwh' | 'arclight' | 'emberlight' | 'tonalztic' | 'bgs' | 'seercull' | 'ayak';
-const SPECS: { key: CountKey, item: string, label: string, unit: string, step: number, max: number }[] = [
-  { key: 'elderMaul', item: 'Elder maul', label: 'Elder maul specs', unit: 'specs', step: 1, max: 6 },
-  { key: 'dwh', item: 'Dragon warhammer', label: 'Dragon warhammer specs', unit: 'specs', step: 1, max: 6 },
-  { key: 'arclight', item: 'Arclight', label: 'Arclight specs', unit: 'specs', step: 1, max: 10 },
-  { key: 'emberlight', item: 'Emberlight', label: 'Emberlight specs', unit: 'specs', step: 1, max: 10 },
-  { key: 'tonalztic', item: 'Tonalztics of Ralos', label: 'Ralos hits (2 per spec)', unit: 'hits', step: 1, max: 12 },
-  { key: 'bgs', item: 'Bandos godsword', label: 'Bandos godsword damage', unit: 'damage', step: 5, max: 400 },
-  { key: 'seercull', item: 'Seercull', label: 'Seercull damage (Magic)', unit: 'damage', step: 5, max: 400 },
-  { key: 'ayak', item: 'Eye of Ayak', label: 'Eye of Ayak (magic defence)', unit: 'points', step: 5, max: 400 },
+// 'count' specs drain per landed hit; 'damage' specs drain by the damage the spec dealt (from each weapon's wiki page).
+const SPECS: { key: CountKey, item: string, label: string, kind: 'count' | 'damage', max: number }[] = [
+  { key: 'elderMaul', item: 'Elder maul', label: 'Elder maul: specs that hit', kind: 'count', max: 6 },
+  { key: 'dwh', item: 'Dragon warhammer', label: 'Dragon warhammer: specs that hit', kind: 'count', max: 6 },
+  { key: 'arclight', item: 'Arclight', label: 'Arclight: specs that hit', kind: 'count', max: 10 },
+  { key: 'emberlight', item: 'Emberlight', label: 'Emberlight: specs that hit', kind: 'count', max: 10 },
+  { key: 'tonalztic', item: 'Tonalztics of Ralos', label: 'Ralos: hitsplats that hit (up to 2 per spec)', kind: 'count', max: 12 },
+  { key: 'bgs', item: 'Bandos godsword', label: 'Bandos godsword: total damage dealt (drains Defence first)', kind: 'damage', max: 999 },
+  { key: 'seercull', item: 'Seercull', label: 'Seercull: damage dealt (drains Magic)', kind: 'damage', max: 999 },
+  { key: 'ayak', item: 'Eye of Ayak', label: 'Eye of Ayak: damage dealt (drains magic defence)', kind: 'damage', max: 999 },
 ];
 
 export default function DefenceScreen({ state, setState }: Props) {
@@ -86,7 +87,23 @@ export default function DefenceScreen({ state, setState }: Props) {
               return (
                 <div key={s.key} className={`spec-cell${v ? ' active' : ''}`} title={s.label}>
                   <img src={itemImage(it)} alt={s.item} />
-                  <Stepper label={s.label} value={v} step={s.step} max={s.max} onChange={(x) => setR({ [s.key]: x } as Partial<DefenceReductions>)} />
+                  {s.kind === 'count'
+                    ? <Stepper label={s.label} value={v} max={s.max} onChange={(x) => setR({ [s.key]: x } as Partial<DefenceReductions>)} />
+                    : (
+                      <label className="dmg-input">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={s.max}
+                          aria-label={s.label}
+                          value={v || ''}
+                          placeholder="0"
+                          onChange={(e) => setR({ [s.key]: Math.max(0, Math.min(s.max, Math.floor(Number(e.target.value) || 0))) } as Partial<DefenceReductions>)}
+                        />
+                        <span>dmg</span>
+                      </label>
+                    )}
                 </div>
               );
             })}
@@ -95,6 +112,10 @@ export default function DefenceScreen({ state, setState }: Props) {
             <IconToggle label="Vulnerability (−10% Defence)" icon={wikiImage('Vulnerability.png')} on={r.vulnerability} onClick={() => setR({ vulnerability: !r.vulnerability, accursed: false })} />
             <IconToggle label="Accursed sceptre spec (−15% Defence and Magic)" icon={itemImage(findItem('Accursed sceptre'))} on={r.accursed} onClick={() => setR({ accursed: !r.accursed, vulnerability: false })} />
             <button type="button" className="btn" onClick={() => setR({ ...NO_REDUCTIONS })}>Reset</button>
+          </div>
+          <div className="tiny" style={{ color: 'var(--soft)' }}>
+            <strong>Ralos:</strong> each number on its counter is 1 hitsplat that landed, not 1 spec. A Ralos spec can hit up to 2 hitsplats,
+            so one fully landed spec = 2. Bandos godsword, Seercull and Eye of Ayak: type the damage the spec dealt.
           </div>
           <div className="mono small" style={{ color: 'var(--soft)' }}>{floor > 0 ? `To the floor from full: ${toCap.join(' · ')}` : 'No drain floor on this target.'}</div>
           <div className="tiny muted">
