@@ -141,7 +141,14 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .skills-after > div { display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--inset); border-radius: 10px; padding: 10px 4px; }
 .skills-after .now { font-family: var(--mono); font-size: 22px; font-weight: 600; }
 .skills-after .now.drained { color: var(--gold); }
-.boss-list { display: flex; flex-direction: column; gap: 6px; }
+.boss-list { display: flex; flex-direction: column; gap: 6px; max-height: 560px; overflow-y: auto; }
+.raid-select {
+  min-height: 44px; padding: 0 36px 0 12px; border-radius: 8px; border: 1px solid var(--control); background-color: var(--inset); color: var(--text-strong);
+  font-family: var(--sans); font-size: 14px; font-weight: 600; appearance: none; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 19px, calc(100% - 13px) 19px; background-size: 5px 5px; background-repeat: no-repeat;
+}
+.raid-select option { background: var(--panel); color: var(--text); }
 .boss-list button { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; text-align: left; }
 .boss-list button.on { border-color: var(--gold); background: var(--line); }
 

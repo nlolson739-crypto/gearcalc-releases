@@ -1,27 +1,14 @@
 import { useMemo } from 'react';
 import {
-  defenceFloor, findItem, findMonster, monsterKey, NO_REDUCTIONS, prepareMonster, scaledMonster, type DefenceReductions,
+  defenceFloor, findItem, NO_REDUCTIONS, prepareMonster, scaledMonster, type DefenceReductions,
 } from '~/engine';
+import RaidBossList from '~/ui/RaidBossList';
 import { baseMonster, EXTRA_MONSTERS, type AppState } from '~/state';
 import {
   IconToggle, itemImage, MonsterPicker, Panel, Stepper, wikiImage,
 } from '~/ui/common';
 
 type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
-
-const ARCHIVE: [string, string, string][] = [
-  ['Archive Guardian', 'Grounded', 'Archive Guardian'],
-  ['Ezekiel', '', 'Ezekiel'],
-  ['Bork', '', 'Bork'],
-  ['The Smorks', '', 'Smorks'],
-  ['Moia', '', 'Moia'],
-  ['Dreadnoth the Jellied', '', 'Dreadnoth'],
-  ['Xarth', '', 'Xarth'],
-  ["Dagon'hai Elder", '', "Dagon'hai Elder"],
-  ['Ocellus', 'Phase 1', 'Ocellus · Phase 1'],
-  ['Ocellus', 'Phase 2', 'Ocellus · Phase 2'],
-  ['Ocellus', 'Phase 3', 'Ocellus · Phase 3'],
-];
 
 type CountKey = 'elderMaul' | 'dwh' | 'arclight' | 'emberlight' | 'tonalztic' | 'bgs' | 'seercull' | 'ayak';
 const SPECS: { key: CountKey, item: string, label: string, unit: string, step: number, max: number }[] = [
@@ -67,21 +54,7 @@ export default function DefenceScreen({ state, setState }: Props) {
         <Panel title="Target">
           <MonsterPicker value={state.target} onChange={(k) => setState((s) => ({ ...s, target: k }))} extra={EXTRA_MONSTERS} />
         </Panel>
-        <Panel title="The Fractured Archive">
-          <div className="boss-list">
-            {ARCHIVE.map(([name, version, label]) => {
-              const mon = findMonster(name, version);
-              if (!mon) return null;
-              const key = monsterKey(mon);
-              return (
-                <button type="button" key={key} className={key === state.target ? 'on' : ''} onClick={() => setState((s) => ({ ...s, target: key, reductions: { ...NO_REDUCTIONS } }))}>
-                  <span>{label}</span>
-                  <span className="mono small muted">{mon.skills.def}</span>
-                </button>
-              );
-            })}
-          </div>
-        </Panel>
+        <RaidBossList target={state.target} onPick={(key) => setState((s) => ({ ...s, target: key, reductions: { ...NO_REDUCTIONS } }))} />
       </aside>
 
       <section className="main" aria-label="Defence reduction">
