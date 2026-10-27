@@ -74,7 +74,11 @@ def check(current, timeout=6):
     new, cur = _ver(rel.get("tag_name", "")), _ver(current)
     if new is None or cur is None or new <= cur:
         return None
-    full = _asset(next((a for a in rel.get("assets", []) if a["name"].lower().endswith(".zip")), None))
+    # The app zip by its exact name; releases also carry a source zip (GPL), which must never be installed.
+    assets = rel.get("assets", [])
+    want = f"GearCalc-{rel.get('tag_name', '')}.zip"
+    full = _asset(next((a for a in assets if a["name"] == want), None)
+                  or next((a for a in assets if a["name"].lower().endswith(".zip") and "source" not in a["name"].lower()), None))
     if not full:
         return None
     patch = None

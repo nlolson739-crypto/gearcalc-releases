@@ -3,7 +3,6 @@ dist/
 dist-app/
 build/
 release/
-vendor/
 .cache/
 app/.venv/
 app/gearcalc.ico
