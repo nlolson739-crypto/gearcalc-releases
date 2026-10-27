@@ -23,6 +23,13 @@ const SPECS: { key: CountKey, item: string, label: string, kind: 'count' | 'dama
   { key: 'ayak', item: 'Eye of Ayak', label: 'Eye of Ayak: damage dealt (drains magic defence)', kind: 'damage', max: 999 },
 ];
 
+// The order the wiki engine's applyDefenceReductions applies drains in (Accursed and Vulnerability are either/or).
+const ORDER: { label: string, icon: string }[][] = [
+  [{ label: 'Accursed sceptre', icon: itemImage(findItem('Accursed sceptre')) }, { label: 'Vulnerability', icon: wikiImage('Vulnerability.png') }],
+  ...['Elder maul', 'Dragon warhammer', 'Arclight', 'Emberlight', 'Tonalztics of Ralos', 'Seercull', 'Bandos godsword', 'Eye of Ayak']
+    .map((n) => [{ label: n, icon: itemImage(findItem(n)) }]),
+];
+
 export default function DefenceScreen({ state, setState }: Props) {
   const base = baseMonster(state.target);
   const r = state.reductions;
@@ -118,10 +125,21 @@ export default function DefenceScreen({ state, setState }: Props) {
             so one fully landed spec = 2. Bandos godsword, Seercull and Eye of Ayak: type the damage the spec dealt.
           </div>
           <div className="mono small" style={{ color: 'var(--soft)' }}>{floor > 0 ? `To the floor from full: ${toCap.join(' · ')}` : 'No drain floor on this target.'}</div>
-          <div className="tiny muted">
-            Drains are applied the way the wiki engine applies them: Accursed or Vulnerability, then elder maul, dragon warhammer,
-            Arclight, Emberlight, Ralos, Seercull, Bandos godsword damage, then Eye of Ayak.
+          <div className="order-strip" aria-label="Order the drains are applied in">
+            <span className="tiny muted">Applied in this order:</span>
+            {ORDER.map((step, i) => (
+              <span key={step.map((x) => x.label).join()} className="order-step">
+                {i > 0 && <span className="order-arrow" aria-hidden="true">→</span>}
+                {step.map((x, j) => (
+                  <span key={x.label} className="order-icon">
+                    {j > 0 && <span className="tiny muted">/</span>}
+                    <img src={x.icon} alt={x.label} title={x.label} />
+                  </span>
+                ))}
+              </span>
+            ))}
           </div>
+          <div className="tiny muted">This is the wiki engine's order. Percentage drains (maul, warhammer) take more when they come before flat ones.</div>
         </Panel>
 
         <Panel title="Stats after specials">

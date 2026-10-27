@@ -141,6 +141,10 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .spec-cell.active { border-color: #4a4030; }
 .spec-cell img { width: 36px; height: 36px; object-fit: contain; image-rendering: pixelated; }
 .spec-cell .stepper span { flex: 1; font-size: 20px; }
+.order-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.order-step, .order-icon { display: inline-flex; align-items: center; gap: 4px; }
+.order-icon img { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; }
+.order-arrow { color: var(--text-strong); font-size: 18px; font-weight: 700; }
 .dmg-input { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; }
 .dmg-input input { width: 100%; min-width: 0; height: 44px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--control); background: var(--panel); color: var(--text-strong); font-family: var(--mono); font-size: 20px; font-weight: 600; text-align: center; -moz-appearance: textfield; }
 .dmg-input input::-webkit-outer-spin-button, .dmg-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -156,7 +160,8 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
   background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
   background-position: calc(100% - 18px) 19px, calc(100% - 13px) 19px; background-size: 5px 5px; background-repeat: no-repeat;
 }
-.raid-select option { background: var(--panel); color: var(--text); }
+.raid-select option, .raid-select optgroup { background: var(--panel); color: var(--text); }
+.spell-select { min-height: 36px; font-size: 13px; background-position: calc(100% - 18px) 15px, calc(100% - 13px) 15px; }
 .boss-list button { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; text-align: left; }
 .boss-list button.on { border-color: var(--gold); background: var(--line); }
 

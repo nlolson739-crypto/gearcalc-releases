@@ -1,10 +1,15 @@
 import { useMemo } from 'react';
 import specArt from '@/public/img/misc/power.webp';
+import sunfireArt from '@/public/img/misc/sunfire_rune.webp';
+import fireArt from '@/public/img/misc/fragment_fire.png';
+import waterArt from '@/public/img/misc/fragment_water.png';
+import earthArt from '@/public/img/misc/fragment_earth.png';
+import windArt from '@/public/img/misc/fragment_wind.png';
 import { PotionMap } from '@/utils';
 import { PrayerMap } from '@/enums/Prayer';
 import { getCdnImage } from '@/utils';
 import {
-  findItem, Potion, Prayer, SLOTS, scaledMonster, stylesFor, type Slot,
+  allSpells, findItem, Potion, Prayer, SLOTS, scaledMonster, stylesFor, type Slot,
 } from '~/engine';
 import { runSetup, runSpec, thrallDps } from '~/calc';
 import {
@@ -19,6 +24,19 @@ type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void
 
 const PRAYERS: Prayer[] = [Prayer.PIETY, Prayer.CHIVALRY, Prayer.RIGOUR, Prayer.AUGURY];
 const POTIONS: Potion[] = [Potion.SUPER_COMBAT, Potion.OVERLOAD_PLUS, Potion.SMELLING_SALTS, Potion.RANGING, Potion.SATURATED_HEART, Potion.FORGOTTEN_BREW];
+const SPELLBOOKS: [string, typeof allSpells][] = (['standard', 'ancient', 'arceuus'] as const).map((b) => [
+  b[0].toUpperCase() + b.slice(1),
+  allSpells.filter((sp) => sp.spellbook === b && sp.max_hit > 0),
+]);
+
+// Fractured Archive elemental fragments (wiki "Elemental fragments"): one per element, +2 max hit each.
+const FRAGMENTS = [
+  { key: 'fragFire', name: 'Fragment of burning fire', element: 'fire', art: fireArt },
+  { key: 'fragWater', name: 'Fragment of deep water', element: 'water', art: waterArt },
+  { key: 'fragEarth', name: 'Fragment of living earth', element: 'earth', art: earthArt },
+  { key: 'fragAir', name: 'Fragment of whispering wind', element: 'air', art: windArt },
+] as const;
+
 const SLOT_LABEL: Record<Slot, string> = {
   head: 'Head', cape: 'Cape', neck: 'Neck', ammo: 'Ammo', weapon: 'Weapon', body: 'Body', shield: 'Shield', legs: 'Legs', hands: 'Hands', feet: 'Feet', ring: 'Ring',
 };
@@ -113,6 +131,12 @@ export default function DpsScreen({ state, setState }: Props) {
             <IconToggle label="On Slayer task" icon={wikiImage('Slayer helmet (i).png')} on={buffs.onSlayerTask} onClick={() => setBuffs((b) => ({ ...b, onSlayerTask: !b.onSlayerTask }))} />
             <IconToggle label="Mark of Darkness" icon={wikiImage('Mark of Darkness.png')} on={buffs.markOfDarkness} onClick={() => setBuffs((b) => ({ ...b, markOfDarkness: !b.markOfDarkness }))} />
             <IconToggle label="Charge" icon={wikiImage('Charge.png')} on={buffs.charge} onClick={() => setBuffs((b) => ({ ...b, charge: !b.charge }))} />
+            <IconToggle label="Sunfire runes: fire spell hits deal at least 10% of max hit" icon={sunfireArt} on={!!buffs.sunfire} onClick={() => setBuffs((b) => ({ ...b, sunfire: !b.sunfire }))} />
+          </IconRow>
+          <IconRow label="Fragments">
+            {FRAGMENTS.map((f) => (
+              <IconToggle key={f.key} label={`${f.name}: +2 max hit to ${f.element} spells`} icon={f.art} on={!!buffs[f.key]} onClick={() => setBuffs((b) => ({ ...b, [f.key]: !b[f.key] }))} />
+            ))}
           </IconRow>
           <div className="small muted">
             {buffs.thrall ? <>Thrall adds {thrallDps(buffs.thrall)} DPS (always hits, <a href={wikiUrl(THRALL_SOURCE.page)} target="_blank" rel="noreferrer">wiki</a>). </> : null}
@@ -162,6 +186,16 @@ export default function DpsScreen({ state, setState }: Props) {
                         <small>{x.type ? x.type[0].toUpperCase() + x.type.slice(1) : 'None'} · {x.stance}</small>
                       </button>
                     ))}
+                    {style?.type === 'magic' && /cast/i.test(style.stance ?? '') && (
+                      <select className="raid-select spell-select" aria-label="Spell" value={s.spell ?? ''} onChange={(e) => setSetup(s.id, (y) => ({ ...y, spell: e.target.value || undefined }))}>
+                        <option value="">Choose a spell…</option>
+                        {SPELLBOOKS.map(([book, list]) => (
+                          <optgroup key={book} label={book}>
+                            {list.map((sp) => <option key={sp.name} value={sp.name}>{sp.name}{sp.element ? ` (${sp.element})` : ''}</option>)}
+                          </optgroup>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
               </Panel>

@@ -12,6 +12,8 @@ export interface Setup {
   color: string;
   gear: Partial<Record<Slot, number>>;
   style?: string;
+  /** spell name, used when the chosen style casts (autocast or manual cast) */
+  spell?: string;
   specWeapon?: number;
 }
 
@@ -22,6 +24,12 @@ export interface Buffs {
   onSlayerTask: boolean;
   markOfDarkness: boolean;
   charge: boolean;
+  /** Fractured Archive elemental fragments: +2 max hit to that element's spells (wiki "Elemental fragments") */
+  fragFire?: boolean;
+  fragWater?: boolean;
+  fragEarth?: boolean;
+  fragAir?: boolean;
+  sunfire?: boolean;
 }
 
 export interface AppState {

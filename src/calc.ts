@@ -1,5 +1,5 @@
 import {
-  buildPlayer, calculate, prepareMonster, scaledMonster, type CalcResult, type DefenceReductions, type EquipmentPiece, type Monster,
+  allSpells, buildPlayer, calculate, prepareMonster, scaledMonster, type CalcResult, type DefenceReductions, type EquipmentPiece, type Monster,
 } from '~/engine';
 import { THRALLS } from '~/rules/wiki';
 import {
@@ -26,7 +26,17 @@ export function playerFor(setup: Setup, buffs: Buffs, monster: Monster, weaponOv
     styleName: styleOverride ?? setup.style,
     prayers: buffs.prayer === null ? [] : [buffs.prayer],
     potions: buffs.potions,
-    buffs: { onSlayerTask: buffs.onSlayerTask, markOfDarknessSpell: buffs.markOfDarkness, chargeSpell: buffs.charge },
+    spell: weaponOverride === undefined && setup.spell ? allSpells.find((s) => s.name === setup.spell) ?? null : null,
+    buffs: {
+      onSlayerTask: buffs.onSlayerTask,
+      markOfDarknessSpell: buffs.markOfDarkness,
+      chargeSpell: buffs.charge,
+      fragmentOfFire: !!buffs.fragFire,
+      fragmentOfWater: !!buffs.fragWater,
+      fragmentOfEarth: !!buffs.fragEarth,
+      fragmentOfWind: !!buffs.fragAir,
+      usingSunfireRunes: !!buffs.sunfire,
+    },
   }, monster);
 }
 
