@@ -197,6 +197,8 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .result-rank { font-family: var(--mono); font-size: 28px; font-weight: 600; min-width: 32px; color: var(--muted); }
 .result-card.first .result-rank { color: var(--gold); }
 .result-items { display: flex; flex-wrap: wrap; gap: 4px; }
+.cat-badge { padding: 3px 9px; border-radius: 999px; border: 1px solid var(--control); background: var(--inset); font-size: 12px; font-weight: 600; color: var(--soft); white-space: nowrap; }
+.result-card.first .cat-badge { border-color: var(--gold); color: var(--gold); }
 .metric { display: flex; flex-direction: column; gap: 2px; font-family: var(--mono); }
 .metric span:first-child { font-family: var(--sans); font-size: 12px; color: var(--muted); }
 .metric span:last-child { font-size: 18px; font-weight: 600; }
