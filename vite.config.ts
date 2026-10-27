@@ -22,5 +22,10 @@ export default defineConfig({
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'development'),
   },
-  server: { port: 5178, strictPort: true },
+  server: {
+    port: 5178,
+    strictPort: true,
+    // The desktop build folders contain a copy of the app; watching them confuses hot reload.
+    watch: { ignored: ['**/dist/**', '**/dist-app/**', '**/release/**', '**/build/**', '**/app/.venv/**'] },
+  },
 });

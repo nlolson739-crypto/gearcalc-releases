@@ -57,6 +57,10 @@ h1 { margin: 0; font-size: 22px; font-weight: 600; }
 .stat span:first-child { font-size: 12px; color: var(--muted); }
 .stat span:last-child { font-family: var(--mono); font-size: 17px; font-weight: 600; }
 
+.maul-row { display: flex; align-items: center; gap: 10px; background: var(--inset); border-radius: 8px; padding: 4px 6px 4px 8px; }
+.maul-row img { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; }
+.maul-row > span { flex: 1; font-size: 13px; color: var(--soft); }
+
 /* controls */
 .btn { min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--control); background: transparent; }
 .btn.primary { border: none; background: var(--gold); color: var(--gold-ink); font-weight: 700; }

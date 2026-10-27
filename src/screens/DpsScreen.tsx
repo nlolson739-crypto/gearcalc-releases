@@ -4,7 +4,7 @@ import { PotionMap } from '@/utils';
 import { PrayerMap } from '@/enums/Prayer';
 import { getCdnImage } from '@/utils';
 import {
-  Potion, Prayer, SLOTS, scaledMonster, stylesFor, type Slot,
+  findItem, Potion, Prayer, SLOTS, scaledMonster, stylesFor, type Slot,
 } from '~/engine';
 import { runSetup, runSpec, thrallDps } from '~/calc';
 import {
@@ -12,7 +12,7 @@ import {
 } from '~/state';
 import { THRALLS, THRALL_SOURCE, wikiUrl } from '~/rules/wiki';
 import {
-  fmtTime, IconRow, IconToggle, MonsterPicker, Panel, pct, SlotButton, Stepper, wikiImage,
+  fmtTime, IconRow, IconToggle, itemImage, MonsterPicker, Panel, pct, SlotButton, Stepper, wikiImage,
 } from '~/ui/common';
 
 type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
@@ -84,7 +84,11 @@ export default function DpsScreen({ state, setState }: Props) {
             <div className="stat"><span>Crush def</span><span>+{base.defensive.crush}</span></div>
             <div className="stat"><span>Magic def</span><span>+{base.defensive.magic}</span></div>
             <div className="stat"><span>Ranged def</span><span>+{base.defensive.standard}</span></div>
-            <div className="stat"><span>Elder mauls</span><span><Stepper label="elder maul specs" value={state.reductions.elderMaul} max={6} onChange={(v) => setState((s) => ({ ...s, reductions: { ...s.reductions, elderMaul: v } }))} /></span></div>
+          </div>
+          <div className="maul-row">
+            <img src={itemImage(findItem('Elder maul'))} alt="" />
+            <span>Elder mauls</span>
+            <Stepper label="elder maul specs" value={state.reductions.elderMaul} max={6} onChange={(v) => setState((s) => ({ ...s, reductions: { ...s.reductions, elderMaul: v } }))} />
           </div>
           <a href="#defence" className="small">Other defence reductions</a>
         </Panel>
