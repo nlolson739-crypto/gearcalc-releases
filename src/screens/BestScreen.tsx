@@ -3,7 +3,9 @@ import {
   allSpells, calculate, EquipmentCategory, equipment, findItem, prepareMonster, scaledMonster, SLOTS, stylesFor,
   type DefenceReductions, type EquipmentPiece, type PlayerCombatStyle, type Slot,
 } from '~/engine';
-import { CORRUPTED_GAUNTLET_EQUIPMENT_IDS, GAUNTLET_EQUIPMENT_IDS } from '@/lib/Equipment';
+import {
+  AmmoApplicability, ammoApplicability, CORRUPTED_GAUNTLET_EQUIPMENT_IDS, GAUNTLET_EQUIPMENT_IDS,
+} from '@/lib/Equipment';
 import { drainKeyFor, playerFor, runSetup } from '~/calc';
 import {
   baseMonster, EXTRA_MONSTERS, gearOf, targetMonster, type AppState, type Setup,
@@ -12,6 +14,7 @@ import {
   fmtTime, itemImage, MonsterPicker, Panel, Segmented,
 } from '~/ui/common';
 import { ownedChecker } from '~/bank';
+import { isModeOnlyItem } from '~/rules/wiki';
 import BankPicker from '~/ui/BankPicker';
 
 type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
@@ -49,7 +52,7 @@ const RESTRICTED = /deadman|wilderness wars|wilderness champion|emir's arena|sou
 // "0" is fully degraded Barrows, which has no stats
 const UNUSABLE_VERSIONS = ['Broken', 'Uncharged', 'Inactive', '0'];
 const GAUNTLET = new Set([...GAUNTLET_EQUIPMENT_IDS, ...CORRUPTED_GAUNTLET_EQUIPMENT_IDS]);
-const usable = (e: EquipmentPiece) => !GAUNTLET.has(e.id) && !RESTRICTED.test(e.name) && !RESTRICTED.test(e.version) && !UNUSABLE_VERSIONS.includes(e.version)
+const usable = (e: EquipmentPiece) => !GAUNTLET.has(e.id) && !isModeOnlyItem(e.name) && !RESTRICTED.test(e.name) && !RESTRICTED.test(e.version) && !UNUSABLE_VERSIONS.includes(e.version)
   // novelty "weapons" (Gnomeball, Ghost buster 500, ...) have no real attack speed in the data, which inflates their DPS
   && (e.slot !== 'weapon' || e.speed > 0);
 
@@ -193,13 +196,19 @@ export default function BestScreen({ state, setState }: Props) {
       // Start each weapon from the strongest-looking item in every slot, then swap one slot at a time.
       const start: Setup['gear'] = {};
       for (const slot of SLOTS) if (slot !== 'weapon' && pool[slot]?.length) start[slot] = pool[slot]![0].id;
+      // Bows, crossbows and the like only work with their own ammo, so they get the best of what they can fire.
+      const ammoFor = (w: EquipmentPiece): EquipmentPiece[] => {
+        if (ammoApplicability(w.id) === AmmoApplicability.ALLOWED) return pool.ammo ?? [];
+        return unique.filter((a) => a.slot === 'ammo' && ammoApplicability(w.id, a.id) === AmmoApplicability.INCLUDED)
+          .sort((a, b) => score(b, 'ranged') - score(a, 'ranged')).slice(0, 16);
+      };
       const optimise = async (w: EquipmentPiece, perSlot: number, passes: number) => {
         let { setup: cur, v: curV } = bestStyle(withWeapon(w));
         for (let pass = 0; pass < passes && !cancel.current; pass++) {
           let improved = false;
           for (const slot of SLOTS) {
             if (slot === 'weapon' || (slot === 'shield' && w.isTwoHanded)) continue;
-            for (const cand of (pool[slot] ?? []).slice(0, perSlot)) {
+            for (const cand of (slot === 'ammo' ? ammoFor(w) : pool[slot] ?? []).slice(0, perSlot)) {
               const c = { ...cur, gear: { ...cur.gear, [slot]: cand.id } };
               const v = evaluate(c, spec); evals++;
               if (v > curV + 1e-9) { cur = c; curV = v; improved = true; }
@@ -218,7 +227,7 @@ export default function BestScreen({ state, setState }: Props) {
       // Pick the 25 weapons to search by real DPS in the starting gear, not by stats: a weapon's stats miss things like
       // the scythe's extra hits on large targets or a weapon's special effects.
       const withWeapon = (w: EquipmentPiece): Setup => ({
-        id: cat.id, name: cat.label, color: '', gear: { ...start, weapon: w.id, ...(w.isTwoHanded ? { shield: undefined } : {}) },
+        id: cat.id, name: cat.label, color: '', gear: { ...start, weapon: w.id, ammo: ammoFor(w)[0]?.id ?? start.ammo, ...(w.isTwoHanded ? { shield: undefined } : {}) },
       });
       const ranked: { w: EquipmentPiece, v: number }[] = [];
       for (let wi = 0; wi < candidates.length && !cancel.current; wi++) {

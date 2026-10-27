@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { getCdnImage, getWikiImage } from '@/utils';
 import { equipment, monsters, monsterKey, type EquipmentPiece, type Slot } from '~/engine';
+import { isModeOnlyItem } from '~/rules/wiki';
 
 export const itemImage = (e: EquipmentPiece | null | undefined) => (e?.image ? getCdnImage(`equipment/${e.image}`) : '');
 export const wikiImage = (file: string) => getWikiImage(file);
@@ -71,7 +72,7 @@ export function ItemPicker({
   const results = useMemo(() => {
     if (!open) return [];
     const nq = norm(q);
-    const pool = equipment.filter((e) => (slot === 'any-weapon' ? e.slot === 'weapon' : e.slot === slot));
+    const pool = equipment.filter((e) => !isModeOnlyItem(e.name) && (slot === 'any-weapon' ? e.slot === 'weapon' : e.slot === slot));
     const hits = nq ? pool.filter((e) => norm(e.name).includes(nq)) : pool;
     return hits.sort((a, b) => (norm(a.name).startsWith(nq) ? 0 : 1) - (norm(b.name).startsWith(nq) ? 0 : 1) || a.name.localeCompare(b.name)).slice(0, 30);
   }, [q, open, slot]);
@@ -120,7 +121,7 @@ export function SlotButton({
   const results = useMemo(() => {
     if (!open) return [];
     const nq = norm(q);
-    const pool = equipment.filter((e) => (slot === 'any-weapon' ? e.slot === 'weapon' : e.slot === slot));
+    const pool = equipment.filter((e) => !isModeOnlyItem(e.name) && (slot === 'any-weapon' ? e.slot === 'weapon' : e.slot === slot));
     const hits = nq ? pool.filter((e) => norm(e.name).includes(nq)) : pool;
     return hits.sort((a, b) => (norm(a.name).startsWith(nq) ? 0 : 1) - (norm(b.name).startsWith(nq) ? 0 : 1) || a.name.localeCompare(b.name)).slice(0, 40);
   }, [q, open, slot]);

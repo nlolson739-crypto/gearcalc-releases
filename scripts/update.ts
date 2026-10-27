@@ -19,7 +19,7 @@ console.log(before === after ? `Wiki engine already up to date (${after.slice(0,
 // Every wiki page GearCalc's rules cite, with the revision they were read at.
 const rulesSrc = await Deno.readTextFile(new URL('../src/rules/wiki.ts', import.meta.url));
 const cited = new Map<string, number>();
-for (const m of rulesSrc.matchAll(/page: '([^']+)', revision: (\d+)/g)) cited.set(m[1], Number(m[2]));
+for (const m of rulesSrc.matchAll(/page: (['"])(.+?)\1, revision: (\d+)/g)) cited.set(m[2], Number(m[3]));
 
 const titles = [...cited.keys()];
 const latest = new Map<string, number>();
