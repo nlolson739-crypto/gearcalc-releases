@@ -2,6 +2,7 @@
 updater to the page (window.pywebview.api) so the update prompt is part of GearCalc's own UI."""
 import logging
 import os
+import shutil
 import socket
 import sys
 import threading
@@ -27,6 +28,27 @@ def version() -> str:
             return f.read().strip()
     except OSError:
         return 'dev'
+
+
+def clear_stale_cache(storage: str) -> None:
+    """After an update, drop WebView2's cached copy of the old page. The page is served without cache headers, so
+    WebView2 can keep showing the previous version's index.html. Saved setups (Local Storage) are kept."""
+    marker = os.path.join(DATA_DIR, 'web_version.txt')
+    try:
+        with open(marker, encoding='utf-8') as f:
+            if f.read().strip() == version():
+                return
+    except OSError:
+        pass
+    profile = os.path.join(storage, 'EBWebView', 'Default')
+    for name in ('Cache', 'Code Cache', 'GPUCache', 'Service Worker'):
+        shutil.rmtree(os.path.join(profile, name), ignore_errors=True)
+    try:
+        with open(marker, 'w', encoding='utf-8') as f:
+            f.write(version())
+    except OSError:
+        pass
+    logging.info('cleared web cache for v%s', version())
 
 
 def port_free(port: int) -> bool:
@@ -118,6 +140,8 @@ def main() -> None:
         return
     if updater.frozen():
         updater.clean()
+    storage = os.path.join(DATA_DIR, 'webview')
+    clear_stale_cache(storage)
     api = Api()
     api._window = webview.create_window(
         f'{APP_NAME} v{version()}',
@@ -132,7 +156,7 @@ def main() -> None:
         http_server=True,
         http_port=PORT,
         private_mode=False,
-        storage_path=os.path.join(DATA_DIR, 'webview'),
+        storage_path=storage,
         icon=resource('gearcalc.ico'),
     )
 
