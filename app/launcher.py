@@ -38,7 +38,9 @@ class Api:
     """Called from the page. Each call runs on its own thread, so the slow ones may block."""
 
     def __init__(self):
-        self.window = None
+        # Private (underscore) attributes only: pywebview walks every public attribute of the js_api object, and
+        # walking the Window object sends it into endless recursion (a blank window that never loads).
+        self._window = None
         self._info = None
         self._state = {'stage': 'idle', 'done': 0, 'total': 0, 'error': ''}
         self._cancel = False
@@ -46,6 +48,11 @@ class Api:
 
     def version(self):
         return version()
+
+    def log_error(self, msg):
+        """Errors from the page, so they end up in gearcalc.log."""
+        logging.error('page error: %s', str(msg)[:4000])
+        return True
 
     def check_update(self):
         """The newer release, or None. Only the built app updates itself."""
@@ -96,7 +103,7 @@ class Api:
             return False
         new_dir, removed, full = self._result
         updater.apply(new_dir, os.path.join(DATA_DIR, 'update.log'), full=full, removed=removed)
-        threading.Timer(0.4, self.window.destroy).start()
+        threading.Timer(0.4, self._window.destroy).start()
         return True
 
 
@@ -112,7 +119,7 @@ def main() -> None:
     if updater.frozen():
         updater.clean()
     api = Api()
-    api.window = webview.create_window(
+    api._window = webview.create_window(
         f'{APP_NAME} v{version()}',
         resource(os.path.join('web', 'index.html')),
         js_api=api,

@@ -22,8 +22,14 @@ export default function UpdatePrompt() {
   const timer = useRef<number>();
 
   useEffect(() => {
-    const check = () => api()?.check_update().then((i) => { if (i) { setInfo(i); setView('ask'); } }).catch(() => {});
-    if (api()) check();
+    const check = () => {
+      const a = api();
+      if (typeof a?.check_update !== 'function') return;
+      a.check_update().then((i) => { if (i) { setInfo(i); setView('ask'); } }).catch(() => {});
+    };
+    // pywebview creates window.pywebview.api before it adds the methods; they're only usable after
+    // 'pywebviewready' (or right away if that has already happened).
+    if (typeof api()?.check_update === 'function') check();
     else window.addEventListener('pywebviewready', check, { once: true });
     return () => window.clearInterval(timer.current);
   }, []);
