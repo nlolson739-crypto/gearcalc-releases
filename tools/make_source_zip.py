@@ -9,6 +9,9 @@ import sys
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# The engine files GearCalc's build uses (calculation code, data and the images it bundles).
+ENGINE_PARTS = ('LICENSE', 'README', 'package.json', 'tsconfig.json', 'cdn/json/', 'src/lib/', 'src/types/',
+                'src/enums/', 'src/utils.ts', 'src/state.tsx', 'src/public/img/')
 
 
 def tracked(repo):
@@ -28,8 +31,12 @@ def main(version, out_dir):
                 z.write(full, f'{top}/{p}')
         for p in tracked(vendor):
             full = os.path.join(vendor, p)
-            if os.path.isfile(full):
+            if os.path.isfile(full) and p.startswith(ENGINE_PARTS):
                 z.write(full, f'{top}/vendor/osrs-dps-calc/{p}')
+        z.writestr(f'{top}/vendor/osrs-dps-calc/GEARCALC_NOTE.txt', (
+            'This folder holds the parts of the OSRS Wiki DPS calculator (github.com/weirdgloop/osrs-dps-calc, GPL-3.0)\n'
+            'that GearCalc builds from, unchanged, at the commit in vendor.lock. Its website code, tests and image\n'
+            'CDN folders are not used by GearCalc and are left out; they are in the upstream repository.\n'))
     print(f'{os.path.basename(out)}: {os.path.getsize(out) / 1e6:.1f} MB')
     return out
 
