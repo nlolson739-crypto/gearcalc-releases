@@ -1,0 +1,29 @@
+{
+  "name": "gearcalc",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "vite-node scripts/check.ts",
+    "update-data": "deno run --allow-run=git --allow-read --allow-write --allow-net scripts/update.ts"
+  },
+  "dependencies": {
+    "d3-array": "3.2.4",
+    "lodash.mergewith": "4.6.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/d3-array": "3.2.1",
+    "@types/lodash.mergewith": "4.6.9",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "4.3.4",
+    "type-fest": "4.30.0",
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "vite-node": "2.1.8"
+  }
+}
