@@ -87,7 +87,9 @@ h1 { margin: 0; font-size: 22px; font-weight: 600; }
 .stepper { display: flex; align-items: center; gap: 6px; }
 .stepper button { width: 40px; height: 44px; border-radius: 8px; border: 1px solid var(--control); background: var(--inset); font-size: 18px; }
 .stepper span { min-width: 32px; text-align: center; font-size: 18px; font-weight: 600; }
-.segmented { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.segmented { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 6px; }
+.segmented button { min-width: 0; }
+.segmented button small { overflow-wrap: anywhere; line-height: 1.25; }
 .segmented button { min-height: 48px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--control); background: var(--inset); color: #c3c9d3; text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
 .segmented button span { font-weight: 600; font-size: 14px; }
 .segmented button small { font-size: 12px; color: var(--muted); }
@@ -229,9 +231,15 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* best setup */
-.spec-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.spec-grid.compact .spec-cell img { width: 28px; height: 28px; }
-.spec-grid.compact .dmg-input input { height: 36px; font-size: 16px; }
+/* Sized so a counter fits in 124px: two per row in the sidebar, one per row (never overflowing) when it's narrower. */
+.spec-grid.compact { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 6px; }
+.spec-grid.compact .spec-cell { min-width: 0; gap: 4px; padding: 4px 5px; }
+.spec-grid.compact .spec-cell img { width: 24px; height: 24px; flex: none; }
+.spec-grid.compact .stepper { flex: 1; min-width: 0; gap: 3px; justify-content: space-between; }
+.spec-grid.compact .stepper button { width: 28px; height: 32px; flex: none; font-size: 16px; }
+.spec-grid.compact .stepper span { min-width: 18px; font-size: 16px; }
+.spec-grid.compact .dmg-input input { height: 32px; font-size: 15px; padding: 0 6px; }
+.spec-grid.compact .dmg-input span { font-size: 11px; }
 .stale-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid #4a4030; border-radius: 10px; background: #221d14; color: var(--soft); font-size: 13px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

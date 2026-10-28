@@ -301,7 +301,7 @@ export default function BestScreen({ state, setState }: Props) {
                 {(['melee', 'ranged', 'magic'] as Family[]).map((f) => (
                   <button type="button" key={f} className={families.includes(f) ? 'on' : ''} aria-pressed={families.includes(f)} onClick={() => toggleFamily(f)}>
                     <span>{f[0].toUpperCase() + f.slice(1)}</span>
-                    <small>{f === 'melee' ? 'stab, slash, crush' : f === 'magic' ? 'staves + spells' : 'bows, crossbows…'}</small>
+                    <small>{f === 'melee' ? 'stab, slash, crush' : f === 'magic' ? 'staves + spells' : 'bows, thrown'}</small>
                   </button>
                 ))}
               </div>
