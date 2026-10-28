@@ -250,3 +250,16 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .btn:hover:not(:disabled):not(.primary), .stepper button:hover:not(:disabled), .icon-toggle:hover { border-color: var(--soft); }
 .btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
 .btn.primary:active:not(:disabled) { filter: brightness(0.92); }
+
+/* bank management */
+.btn.small { min-height: 32px; padding: 0 10px; font-size: 13px; }
+.btn.danger { color: var(--loss); border-color: #5a3a36; }
+.btn.danger:hover:not(:disabled) { border-color: var(--loss); }
+.bank-row { display: flex; align-items: center; justify-content: space-between; gap: 6px 10px; flex-wrap: wrap; min-width: 0; }
+.bank-row.confirm { padding: 6px 8px; border: 1px solid #5a3a36; border-radius: 8px; background: #241819; }
+.bank-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.bank-list { display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto; }
+.bank-list-row { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bank-list-main { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.bank-list-main input { flex: 1; min-height: 36px; }
+input[aria-invalid='true'] { border-color: var(--loss); }

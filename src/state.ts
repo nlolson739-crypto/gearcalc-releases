@@ -114,6 +114,17 @@ function load(): AppState {
         saved.buffs.prayers = saved.buffs.prayer === null || saved.buffs.prayer === undefined ? [] : [saved.buffs.prayer];
         delete saved.buffs.prayer;
       }
+      // bank names are unique since v0.29; give older repeats a number ("Main", "Main (2)")
+      if (Array.isArray(saved.banks)) {
+        const seen = new Set<string>();
+        saved.banks = saved.banks.map((b: Bank) => {
+          const base = String(b.name ?? '').trim() || 'Bank';
+          let name = base;
+          for (let n = 2; seen.has(name.toLowerCase()); n++) name = `${base} (${n})`;
+          seen.add(name.toLowerCase());
+          return { ...b, name };
+        });
+      }
       return { ...DEFAULT_STATE, ...saved };
     }
   } catch { /* private window or blocked storage: use defaults */ }
