@@ -265,9 +265,9 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 input[aria-invalid='true'] { border-color: var(--loss); }
 
 /* freeze check */
-.bonus-field { gap: 12px; }
-.bonus-field input { width: 120px; min-width: 0; height: 44px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--control); background: var(--inset); color: var(--text-strong); font-family: var(--mono); font-size: 22px; font-weight: 600; text-align: center; -moz-appearance: textfield; }
-.bonus-field input::-webkit-outer-spin-button, .bonus-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.number-field { gap: 12px; }
+.number-field input { width: 120px; min-width: 0; height: 44px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--control); background: var(--inset); color: var(--text-strong); font-family: var(--mono); font-size: 22px; font-weight: 600; text-align: center; -moz-appearance: textfield; }
+.number-field input::-webkit-outer-spin-button, .number-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 .freeze-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
 .icon-toggle.text { width: auto; padding: 0 10px; font-size: 13px; font-weight: 600; color: var(--text); }

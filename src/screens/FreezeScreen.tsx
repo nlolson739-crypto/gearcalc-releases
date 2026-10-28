@@ -8,7 +8,7 @@ import {
 import { PrayerMap } from '@/enums/Prayer';
 import { baseMonster, EXTRA_MONSTERS } from '~/state';
 import {
-  IconRow, IconToggle, itemImage, MonsterPicker, Panel, pct, WikiBadge, wikiImage,
+  IconRow, IconToggle, itemImage, MonsterPicker, NumberField, Panel, pct, Segmented, WikiBadge, wikiImage,
 } from '~/ui/common';
 
 const SALVE = findItem('Salve amulet(ei)');
@@ -16,6 +16,14 @@ const SALVE = findItem('Salve amulet(ei)');
 // Prayers that raise magic accuracy, weakest first (their boosts come from the wiki engine).
 const MAGIC_PRAYERS = [Prayer.MYSTIC_WILL, Prayer.MYSTIC_LORE, Prayer.MYSTIC_MIGHT, Prayer.MYSTIC_VIGOUR, Prayer.AUGURY];
 const prayerIcon = (p: Prayer) => PrayerMap[p].image as unknown as string;
+
+// Full Void mage sets (wiki "Void Knight equipment" / "Elite Void Knight equipment"): +45% magic accuracy; the engine
+// applies it when all four pieces are worn.
+type VoidSet = 'none' | 'void' | 'elite';
+const VOID_GEAR: Record<Exclude<VoidSet, 'none'>, Partial<Record<'head' | 'body' | 'legs' | 'hands', ReturnType<typeof findItem>>>> = {
+  void: { head: findItem('Void mage helm'), body: findItem('Void knight top'), legs: findItem('Void knight robe'), hands: findItem('Void knight gloves') },
+  elite: { head: findItem('Void mage helm'), body: findItem('Elite void top'), legs: findItem('Elite void robe'), hands: findItem('Void knight gloves') },
+};
 
 // Magic attack bonus range for a whole setup (heavy armour can push it below 0).
 const BONUS_MIN = -200;
@@ -30,8 +38,8 @@ export default function FreezeScreen() {
   const [sceptre, setSceptre] = useState(false);
   const [prayer, setPrayer] = useState<Prayer | null>(Prayer.AUGURY);
   const [bonus, setBonus] = useState(43);
-  // what's in the box while typing (it may briefly be empty or just "-")
-  const [bonusText, setBonusText] = useState('43');
+  const [magicLevel, setMagicLevel] = useState(99);
+  const [voidSet, setVoidSet] = useState<VoidSet>('none');
 
   const base = baseMonster(target);
   const monster = prepareMonster(base);
@@ -45,20 +53,23 @@ export default function FreezeScreen() {
     const s = allSpells.find((x) => x.name === spell.name) ?? null;
     const p = buildPlayer({
       name: 'freeze',
-      gear: { neck: withSalve ? SALVE : null },
+      gear: { neck: withSalve ? SALVE : null, ...(voidSet === 'none' ? {} : VOID_GEAR[voidSet]) },
       styleName: 'Spell',
       prayers: prayer === null ? [] : [prayer],
       potions: heart ? [Potion.SATURATED_HEART] : [],
       spell: s,
+      skills: { magic: magicLevel },
       buffs: { markOfDarknessSpell: mark },
     }, monster);
     p.offensive = { ...p.offensive, magic: bonus };
     return calculate(p, monster).accuracy;
   };
 
-  // The wiki gives a threshold with Augury and one with no prayer. Any other magic prayer only adds accuracy, so the
-  // no-prayer threshold still holds with it; the Augury one doesn't.
-  const thresholdFor = threshold ? (prayer === Prayer.AUGURY ? threshold.withAugury : threshold.withoutAugury) : null;
+  // The wiki gives a threshold with Augury and one with no prayer. Any other magic prayer (or Void) only adds accuracy,
+  // so the no-prayer threshold still holds with it; the Augury one doesn't. The wiki doesn't say what Magic level the
+  // values assume, so they're only applied at 99 Magic.
+  const thresholdApplies = !!threshold && magicLevel >= 99;
+  const thresholdFor = threshold && thresholdApplies ? (prayer === Prayer.AUGURY ? threshold.withAugury : threshold.withoutAugury) : null;
   const ruled = () => thresholdFor !== null && bonus >= thresholdFor;
   const bindChance = (s: FreezeSpell) => (mark ? s.markBindChance : s.bindChance);
   const ticks = (s: FreezeSpell) => {
@@ -73,12 +84,12 @@ export default function FreezeScreen() {
   };
 
   const spell = FREEZE_SPELLS.find((s) => s.name === spellName)!;
-  const cells = useMemo(() => [true, false].map((sv) => freezeChance(spell, sv)), [spellName, mark, heart, bonus, target, prayer]);
+  const cells = useMemo(() => [true, false].map((sv) => freezeChance(spell, sv)), [spellName, mark, heart, bonus, target, prayer, magicLevel, voidSet]);
   const table = useMemo(() => FREEZE_SPELLS.map((s) => {
     const c = freezeChance(s, salve && undead);
     const t = ticks(s);
     return { s, c, t, avg: c.value * t.n };
-  }), [mark, heart, bonus, target, salve, sceptre, prayer]);
+  }), [mark, heart, bonus, target, salve, sceptre, prayer, magicLevel, voidSet]);
   const prayerName = prayer === null ? 'No prayer' : PrayerMap[prayer].name;
   const bestAvg = Math.max(...table.map((x) => x.avg));
 
@@ -118,25 +129,17 @@ export default function FreezeScreen() {
           <div className="small" style={{ color: 'var(--soft)' }}>
             {spell.name}: {bindChance(spell) === 1 ? 'every hit freezes' : `${Math.round(bindChance(spell) * 100)}% of hits bind`} for {ticks(spell).n} ticks
           </div>
-          <label className="spread bonus-field">
-            <span className="small" style={{ color: 'var(--soft)' }}>Magic attack bonus</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={BONUS_MIN}
-              max={BONUS_MAX}
-              aria-label="Magic attack bonus"
-              value={bonusText}
-              onChange={(e) => {
-                setBonusText(e.target.value);
-                const v = Math.trunc(Number(e.target.value));
-                if (e.target.value.trim() !== '' && Number.isFinite(v)) setBonus(Math.max(BONUS_MIN, Math.min(BONUS_MAX, v)));
-              }}
-              onBlur={() => setBonusText(String(bonus))}
-              onFocus={(e) => e.target.select()}
-            />
-          </label>
-          <div className="tiny muted">The whole setup's magic attack bonus, e.g. purging staff (+37) and book of the dead (+6) = +43 before armour penalties.</div>
+          <div className="small" style={{ color: 'var(--soft)' }}>Void set bonus</div>
+          <Segmented<VoidSet>
+            label="Void set bonus"
+            value={voidSet}
+            onChange={setVoidSet}
+            options={[{ value: 'none', label: 'None' }, { value: 'void', label: 'Void mage' }, { value: 'elite', label: 'Elite void' }]}
+          />
+          {voidSet !== 'none' && <div className="tiny muted">Full {voidSet === 'elite' ? 'elite ' : ''}Void mage set (helm, top, robe, gloves): +45% magic accuracy (OSRS Wiki). Count the pieces' own stats in the magic attack bonus below.</div>}
+          <NumberField label="Magic level" value={magicLevel} min={1} max={99} onChange={setMagicLevel} />
+          <NumberField label="Magic attack bonus" value={bonus} min={BONUS_MIN} max={BONUS_MAX} onChange={setBonus} />
+          <div className="tiny muted">Magic level before boosts (Saturated heart is under Buffs). Magic attack bonus is the whole setup's, e.g. purging staff (+37) and book of the dead (+6) = +43 before armour penalties.</div>
         </Panel>
       </aside>
 
@@ -159,7 +162,10 @@ export default function FreezeScreen() {
               </div>
             ))}
           </div>
-          {threshold && prayer !== null && prayer !== Prayer.AUGURY && (
+          {threshold && !thresholdApplies && (
+            <div className="tiny muted">The wiki's freeze threshold for this target (+{threshold.withAugury} with Augury, +{threshold.withoutAugury} without) doesn't say what Magic level it assumes, so it's only used at 99 Magic. Below that the wiki engine's formula is shown.</div>
+          )}
+          {thresholdApplies && threshold && prayer !== null && prayer !== Prayer.AUGURY && (
             <div className="tiny muted">The wiki gives a threshold with Augury (+{threshold.withAugury}) and with no prayer (+{threshold.withoutAugury}). {prayerName} only adds accuracy, so the no-prayer one is used.</div>
           )}
         </Panel>
@@ -193,13 +199,15 @@ export default function FreezeScreen() {
               <div key={r.kind + r.source.page} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <WikiBadge approximate={r.approximate} />
                 <div className="small" style={{ color: '#c3c9d3' }}>{r.summary}</div>
-                {r.kind === 'freeze-threshold' && (
+                {r.kind === 'freeze-threshold' && (thresholdFor !== null ? (
                   <div className="row mono small">
-                    <span style={{ color: bonus >= (thresholdFor ?? 0) ? 'var(--teal)' : 'var(--gold)' }}>
-                      {prayerName} (+{thresholdFor}): {bonus >= (thresholdFor ?? 0) ? 'met' : `needs +${(thresholdFor ?? 0) - bonus} more`}
+                    <span style={{ color: bonus >= thresholdFor ? 'var(--teal)' : 'var(--gold)' }}>
+                      {prayerName} (+{thresholdFor}): {bonus >= thresholdFor ? 'met' : `needs +${thresholdFor - bonus} more`}
                     </span>
                   </div>
-                )}
+                ) : (
+                  <div className="tiny muted">Not used at {magicLevel} Magic: the wiki doesn't say what Magic level these values assume, so GearCalc uses them at 99 only.</div>
+                ))}
                 <div className="tiny muted">Source: <a href={wikiUrl(r.source.page)} target="_blank" rel="noreferrer">OSRS Wiki · {r.source.page}</a> (revision {r.source.revision})</div>
               </div>
             ))}

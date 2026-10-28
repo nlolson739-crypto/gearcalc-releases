@@ -2,6 +2,8 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { getCdnImage, getWikiImage } from '@/utils';
 import { equipment, monsters, monsterKey, type EquipmentPiece, type Slot } from '~/engine';
 import { isModeOnlyItem } from '~/rules/wiki';
+import { RAIDS } from '~/raids';
+import { makeSearch } from '~/search';
 
 export const itemImage = (e: EquipmentPiece | null | undefined) => (e?.image ? getCdnImage(`equipment/${e.image}`) : '');
 export const wikiImage = (file: string) => getWikiImage(file);
@@ -61,7 +63,19 @@ export function Segmented<T extends string>({
   );
 }
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+// One search index per slot, built the first time that slot's picker opens.
+const itemSearches = new Map<string, (q: string, limit: number) => EquipmentPiece[]>();
+const slotPool = (slot: Slot | 'any-weapon') => equipment
+  .filter((e) => !isModeOnlyItem(e.name) && (slot === 'any-weapon' ? e.slot === 'weapon' : e.slot === slot))
+  .sort((a, b) => a.name.localeCompare(b.name));
+function searchItems(slot: Slot | 'any-weapon', q: string, limit: number): EquipmentPiece[] {
+  let run = itemSearches.get(slot);
+  if (!run) {
+    run = makeSearch(slotPool(slot), (e) => ({ text: e.name, tags: e.version ? [e.version] : [] }));
+    itemSearches.set(slot, run);
+  }
+  return run(q, limit);
+}
 
 /** Search box over the wiki equipment list for one slot. */
 export function ItemPicker({
@@ -71,10 +85,7 @@ export function ItemPicker({
   const [open, setOpen] = useState(false);
   const results = useMemo(() => {
     if (!open) return [];
-    const nq = norm(q);
-    const pool = equipment.filter((e) => !isModeOnlyItem(e.name) && (slot === 'any-weapon' ? e.slot === 'weapon' : e.slot === slot));
-    const hits = nq ? pool.filter((e) => norm(e.name).includes(nq)) : pool;
-    return hits.sort((a, b) => (norm(a.name).startsWith(nq) ? 0 : 1) - (norm(b.name).startsWith(nq) ? 0 : 1) || a.name.localeCompare(b.name)).slice(0, 30);
+    return searchItems(slot, q, 30);
   }, [q, open, slot]);
   return (
     <div className="item-picker">
@@ -120,10 +131,7 @@ export function SlotButton({
   const [q, setQ] = useState('');
   const results = useMemo(() => {
     if (!open) return [];
-    const nq = norm(q);
-    const pool = equipment.filter((e) => !isModeOnlyItem(e.name) && (slot === 'any-weapon' ? e.slot === 'weapon' : e.slot === slot));
-    const hits = nq ? pool.filter((e) => norm(e.name).includes(nq)) : pool;
-    return hits.sort((a, b) => (norm(a.name).startsWith(nq) ? 0 : 1) - (norm(b.name).startsWith(nq) ? 0 : 1) || a.name.localeCompare(b.name)).slice(0, 40);
+    return searchItems(slot, q, 40);
   }, [q, open, slot]);
   const name = label ?? slot;
   return (
@@ -171,10 +179,16 @@ export function MonsterPicker({ value, onChange, extra = [] }: {
     ...monsters.map((m) => ({ key: monsterKey(m), label: m.name + (m.version ? ` · ${m.version}` : '') })),
   ], [extra]);
   const current = all.find((m) => m.key === value)?.label ?? '';
-  const results = useMemo(() => {
-    const nq = norm(q);
-    return (nq ? all.filter((m) => norm(m.label).includes(nq)) : all).slice(0, 30);
-  }, [q, all]);
+  // typed words can be in any order and shortened; raid names ("tob", "Theatre of Blood") also find their bosses
+  const search = useMemo(() => {
+    const raidOf = new Map<string, string>();
+    for (const [raid, bosses] of Object.entries(RAIDS)) for (const [name] of bosses) raidOf.set(name.toLowerCase(), raid);
+    return makeSearch(all, (m) => {
+      const raid = raidOf.get(m.label.split(' · ')[0].toLowerCase());
+      return { text: m.label, tags: raid ? [raid] : [] };
+    });
+  }, [all]);
+  const results = useMemo(() => search(q, 30), [q, search]);
   return (
     <div className="item-picker">
       <div className="item-picker-current">
@@ -206,4 +220,35 @@ export const fmtTime = (sec: number | undefined) => {
 
 export function WikiBadge({ approximate }: { approximate?: boolean }) {
   return <span className="wiki-badge">{approximate ? 'WIKI RULE · APPROX.' : 'WIKI RULE'}</span>;
+}
+
+/**
+ * A number box for typed values (levels, bonuses). It can be empty or "-" while typing; the last valid number is kept
+ * and shown again when the box loses focus.
+ */
+export function NumberField({
+  label, value, min, max, onChange,
+}: { label: string, value: number, min: number, max: number, onChange: (v: number) => void }) {
+  const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+  return (
+    <label className="spread number-field">
+      <span className="small" style={{ color: 'var(--soft)' }}>{label}</span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        aria-label={label}
+        value={focused ? text : String(value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          const v = Math.trunc(Number(e.target.value));
+          if (e.target.value.trim() !== '' && Number.isFinite(v)) onChange(Math.max(min, Math.min(max, v)));
+        }}
+        onFocus={(e) => { setFocused(true); setText(String(value)); e.target.select(); }}
+        onBlur={() => setFocused(false)}
+      />
+    </label>
+  );
 }
