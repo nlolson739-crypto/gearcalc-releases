@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  allSpells, calculate, EquipmentCategory, equipment, findItem, prepareMonster, scaledMonster, SLOTS, stylesFor,
+  allSpells, calculate, defenceFloor, EquipmentCategory, equipment, findItem, prepareMonster, scaledMonster, SLOTS, stylesFor,
   type DefenceReductions, type EquipmentPiece, type PlayerCombatStyle, type Slot,
 } from '~/engine';
 import {
@@ -16,6 +16,7 @@ import {
 import { ownedChecker } from '~/bank';
 import { isModeOnlyItem } from '~/rules/wiki';
 import BankPicker from '~/ui/BankPicker';
+import ReductionControls from '~/ui/ReductionControls';
 
 type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
 type Family = 'melee' | 'ranged' | 'magic';
@@ -115,9 +116,19 @@ export default function BestScreen({ state, setState }: Props) {
   const [found, setFound] = useState<Found[]>([]);
   const [checked, setChecked] = useState(0);
   const [note, setNote] = useState('');
+  // what the last search was run with, so the results can say when they're out of date
+  const [searchedWith, setSearchedWith] = useState('');
+  // which result was just copied into which setup, for a moment of feedback on the button
+  const [used, setUsed] = useState<string | null>(null);
+  const usedTimer = useRef<number>();
   const cancel = useRef(false);
 
   const monster = targetMonster(state);
+  const inputsKey = JSON.stringify([state.target, state.reductions, state.buffs, state.activeBank, families, goal]);
+  const setR = (patch: Partial<DefenceReductions>) => setState((s) => ({ ...s, reductions: { ...s.reductions, ...patch } }));
+  const base = baseMonster(state.target);
+  const defNow = scaledMonster(monster).skills.def;
+  const floor = defenceFloor(monster);
 
   const evaluate = (s: Setup, spec: boolean): number => {
     if (spec) {
@@ -141,6 +152,7 @@ export default function BestScreen({ state, setState }: Props) {
     cancel.current = false;
     setFound([]);
     setNote('');
+    setSearchedWith(inputsKey);
     setProgress(0);
     let evals = 0;
     const spec = goal === 'spec';
@@ -254,7 +266,8 @@ export default function BestScreen({ state, setState }: Props) {
         await tick();
       }
       full.sort((a, b) => b.v - a.v);
-      if (full[0] && Number.isFinite(full[0].v) && full[0].v > 0) {
+      // TTK scores are negative (a shorter kill scores higher), so only DPS and spec drain need to be above 0
+      if (full[0] && Number.isFinite(full[0].v) && (goal === 'ttk' || full[0].v > 0)) {
         const others = [...full.slice(1).map((f) => ({ name: gearOf(f.setup).weapon?.name ?? '?', score: f.v })),
           ...quick.slice(tops.length, tops.length + 2).map((q) => ({ name: q.w.name, score: q.v }))];
         results.push({ category: cat, setup: full[0].setup, score: full[0].v, others });
@@ -297,7 +310,7 @@ export default function BestScreen({ state, setState }: Props) {
           <div className="tiny muted">
             {goal === 'spec'
               ? 'Ranks the defence-drain spec weapons by expected Defence drained per spec (hit chance × drain), each in its best gear.'
-              : 'Finds the best build for each style (melee split into stab, slash and crush) and ranks them against each other. Uses the buffs, prayers, potions and defence reductions from the DPS screen.'}
+              : 'Finds the best build for each style (melee split into stab, slash and crush) and ranks them against each other. Uses the prayers, potions and buffs from the DPS tab and the defence reductions below.'}
           </div>
           {progress === null
             ? <button type="button" className="btn primary" onClick={run}>Search setups</button>
@@ -309,6 +322,16 @@ export default function BestScreen({ state, setState }: Props) {
             </>
           )}
         </Panel>
+        <Panel title="Defence reductions">
+          <div className="spread small">
+            <span>
+              Defence <span className="mono">{base.skills.def}</span> → <strong className="mono" style={{ color: floor > 0 && defNow <= floor ? 'var(--teal)' : 'var(--text-strong)' }}>{defNow}</strong>
+            </span>
+            <span className="tiny muted">{floor > 0 ? `floor ${floor}` : 'no floor'}</span>
+          </div>
+          <ReductionControls reductions={state.reductions} onChange={setR} compact />
+          <div className="tiny muted">The same drains as the DPS and Defence reduction tabs: specs that landed before you switch to this setup.</div>
+        </Panel>
       </aside>
 
       <section className="main" aria-label="Results">
@@ -316,6 +339,13 @@ export default function BestScreen({ state, setState }: Props) {
           <h1>{goal === 'spec' ? 'Best defence-drain specs' : 'Best builds, all styles ranked'}</h1>
           <span className="small muted">{checked ? `${checked.toLocaleString()} combinations checked` : 'Not searched yet'}</span>
         </div>
+        <div aria-live="polite" className="sr-only">{used ? `Copied into setup ${state.setups.findIndex((s) => used.endsWith(`:${s.id}`)) + 1}` : ''}</div>
+        {found.length > 0 && progress === null && searchedWith !== inputsKey && (
+          <div className="stale-note">
+            <span>The target, buffs, defence reductions or gear changed since this search.</span>
+            <button type="button" className="btn" onClick={run}>Search again</button>
+          </div>
+        )}
         {note && <div className="small muted">{note}</div>}
         {found.map((f, i) => {
           const g = gearOf(f.setup);
@@ -337,21 +367,30 @@ export default function BestScreen({ state, setState }: Props) {
               </div>
               <div className="metric"><span>{metricLabel}</span><span>{fmt(f.score)}</span></div>
               <div className="row">
-                {state.setups.map((s, si) => (
-                  <button
-                    type="button"
-                    key={s.id}
-                    className="btn"
-                    onClick={() => setState((st) => ({
-                      ...st,
-                      setups: st.setups.map((x, xi) => (xi === si ? {
-                        ...x, gear: f.setup.gear, style: f.setup.style, spell: f.setup.spell, name: `${f.category.label} · ${g.weapon?.name ?? ''}`,
-                      } : x)),
-                    }))}
-                  >
-                    Use as {si + 1}
-                  </button>
-                ))}
+                {state.setups.map((s, si) => {
+                  const done = used === `${f.category.id}:${s.id}`;
+                  return (
+                    <button
+                      type="button"
+                      key={s.id}
+                      className={`btn${done ? ' done' : ''}`}
+                      aria-label={`Use as ${si + 1}: copy this build into ${s.name} on the DPS tab`}
+                      onClick={() => {
+                        setState((st) => ({
+                          ...st,
+                          setups: st.setups.map((x, xi) => (xi === si ? {
+                            ...x, gear: f.setup.gear, style: f.setup.style, spell: f.setup.spell, name: `${f.category.label} · ${g.weapon?.name ?? ''}`,
+                          } : x)),
+                        }));
+                        setUsed(`${f.category.id}:${s.id}`);
+                        window.clearTimeout(usedTimer.current);
+                        usedTimer.current = window.setTimeout(() => setUsed(null), 2200);
+                      }}
+                    >
+                      {done ? `✓ Setup ${si + 1}` : `Use as ${si + 1}`}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

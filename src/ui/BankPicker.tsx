@@ -79,11 +79,20 @@ function ImportDialog({ bank, defaultName, onClose, onSave }: {
   const gear = useMemo(() => (preview ? equipmentCount(preview) : 0), [parsed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const paste = async () => {
+    // In the desktop app the launcher reads the clipboard: WebView2 refuses navigator.clipboard there.
+    let clip: string | null = null;
     try {
-      setText(await navigator.clipboard.readText());
-      setHint('');
-    } catch {
+      const api = (window as unknown as { pywebview?: { api?: { read_clipboard?: () => Promise<string | null> } } }).pywebview?.api;
+      if (typeof api?.read_clipboard === 'function') clip = await api.read_clipboard();
+      else clip = await navigator.clipboard.readText();
+    } catch { /* fall through to the hint */ }
+    if (clip === null) {
       setHint('GearCalc couldn\'t read the clipboard. Click in the box below and press Ctrl+V.');
+    } else if (!clip.trim()) {
+      setHint('The clipboard is empty. In Bank Memory, right-click your bank and choose Copy item data to clipboard first.');
+    } else {
+      setText(clip);
+      setHint('');
     }
   };
   const openFile = async (f: File | undefined) => {

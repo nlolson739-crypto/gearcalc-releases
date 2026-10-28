@@ -45,8 +45,12 @@ export function runSetup(setup: Setup, buffs: Buffs, monster: Monster): SetupRes
   const t = thrallDps(buffs.thrall);
   const totalDps = r.dps + t;
   const hp = monster.inputs.monsterCurrentHp || monster.skills.hp;
+  // The engine's time to kill follows each hit's damage spread, so wasted overkill on the last hits counts (HP ÷ DPS
+  // doesn't). A thrall's damage is added on top as a steady rate.
+  const playerRate = r.ttk && r.ttk > 0 && Number.isFinite(r.ttk) ? 1 / r.ttk : r.dps / hp;
+  const rate = playerRate + t / hp;
   return {
-    ...r, thrallDps: t, totalDps, totalTtk: totalDps > 0 ? hp / totalDps : undefined,
+    ...r, thrallDps: t, totalDps, totalTtk: rate > 0 ? 1 / rate : undefined,
   };
 }
 

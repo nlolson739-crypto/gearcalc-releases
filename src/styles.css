@@ -227,3 +227,18 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .link-btn:hover { color: var(--text-strong); }
 .bank-text { min-height: 140px; resize: vertical; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--control); background: var(--inset); color: var(--text-strong); font: 12px/1.4 var(--mono); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* best setup */
+.spec-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.spec-grid.compact .spec-cell img { width: 28px; height: 28px; }
+.spec-grid.compact .dmg-input input { height: 36px; font-size: 16px; }
+.stale-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid #4a4030; border-radius: 10px; background: #221d14; color: var(--soft); font-size: 13px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* pressed and done feedback for every button */
+.btn, .segmented button, .link-btn, .icon-toggle, .stepper button { transition: transform 0.06s ease, filter 0.12s ease, background-color 0.15s ease, border-color 0.15s ease; }
+.btn:active:not(:disabled), .segmented button:active, .icon-toggle:active, .stepper button:active:not(:disabled) { transform: scale(0.96); filter: brightness(1.25); }
+.btn.done { background: var(--teal-bg); border-color: var(--teal); color: var(--teal-ink); }
+.btn:hover:not(:disabled):not(.primary), .stepper button:hover:not(:disabled), .icon-toggle:hover { border-color: var(--soft); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn.primary:active:not(:disabled) { filter: brightness(0.92); }

@@ -72,6 +72,38 @@ def clear_stale_cache(storage: str) -> None:
     logging.info('cleared web cache for v%s', version())
 
 
+def read_clipboard_text() -> str | None:
+    import ctypes
+    from ctypes import wintypes
+    user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
+    user32.OpenClipboard.argtypes = [wintypes.HWND]
+    user32.GetClipboardData.restype = wintypes.HANDLE
+    user32.GetClipboardData.argtypes = [wintypes.UINT]
+    kernel32.GlobalLock.restype = wintypes.LPVOID
+    kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+    kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+    CF_UNICODETEXT = 13
+    for _ in range(5):  # another program may have the clipboard open for a moment
+        if user32.OpenClipboard(None):
+            break
+        threading.Event().wait(0.05)
+    else:
+        return None
+    try:
+        handle = user32.GetClipboardData(CF_UNICODETEXT)
+        if not handle:
+            return ''
+        ptr = kernel32.GlobalLock(handle)
+        if not ptr:
+            return None
+        try:
+            return ctypes.wstring_at(ptr)
+        finally:
+            kernel32.GlobalUnlock(handle)
+    finally:
+        user32.CloseClipboard()
+
+
 def port_free(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('127.0.0.1', port)) != 0
@@ -96,6 +128,11 @@ class Api:
         """Errors from the page, so they end up in gearcalc.log."""
         logging.error('page error: %s', str(msg)[:4000])
         return True
+
+    def read_clipboard(self):
+        """The clipboard's text, for the bank import's Paste button. The page can't read it itself: WebView2 asks for
+        permission first, and pywebview has no handler for that request, so navigator.clipboard.readText fails."""
+        return read_clipboard_text()
 
     def check_update(self):
         """The newer release, or None. Only the built app updates itself."""
