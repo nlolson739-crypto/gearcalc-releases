@@ -5,12 +5,21 @@ import {
 import {
   FREEZE_SPELLS, rulesFor, wikiUrl, XARTH_CORPSE, type BindDurationRule, type FreezeSpell, type FreezeThresholdRule,
 } from '~/rules/wiki';
+import { PrayerMap } from '@/enums/Prayer';
 import { baseMonster, EXTRA_MONSTERS } from '~/state';
 import {
-  IconRow, IconToggle, itemImage, MonsterPicker, Panel, pct, Stepper, WikiBadge, wikiImage,
+  IconRow, IconToggle, itemImage, MonsterPicker, Panel, pct, WikiBadge, wikiImage,
 } from '~/ui/common';
 
 const SALVE = findItem('Salve amulet(ei)');
+
+// Prayers that raise magic accuracy, weakest first (their boosts come from the wiki engine).
+const MAGIC_PRAYERS = [Prayer.MYSTIC_WILL, Prayer.MYSTIC_LORE, Prayer.MYSTIC_MIGHT, Prayer.MYSTIC_VIGOUR, Prayer.AUGURY];
+const prayerIcon = (p: Prayer) => PrayerMap[p].image as unknown as string;
+
+// Magic attack bonus range for a whole setup (heavy armour can push it below 0).
+const BONUS_MIN = -200;
+const BONUS_MAX = 400;
 
 export default function FreezeScreen() {
   const [target, setTarget] = useState(monsterKey(XARTH_CORPSE));
@@ -19,7 +28,10 @@ export default function FreezeScreen() {
   const [heart, setHeart] = useState(false);
   const [salve, setSalve] = useState(true);
   const [sceptre, setSceptre] = useState(false);
+  const [prayer, setPrayer] = useState<Prayer | null>(Prayer.AUGURY);
   const [bonus, setBonus] = useState(43);
+  // what's in the box while typing (it may briefly be empty or just "-")
+  const [bonusText, setBonusText] = useState('43');
 
   const base = baseMonster(target);
   const monster = prepareMonster(base);
@@ -28,14 +40,14 @@ export default function FreezeScreen() {
   const threshold = rules.find((r): r is FreezeThresholdRule => r.kind === 'freeze-threshold');
   const durationRules = rules.filter((r): r is BindDurationRule => r.kind === 'bind-duration');
 
-  // Hit chance from the wiki engine: a manual cast with the given magic attack bonus.
-  const hitChance = (spell: FreezeSpell, augury: boolean, withSalve: boolean) => {
+  // Hit chance from the wiki engine: a manual cast with the given magic attack bonus and prayer.
+  const hitChance = (spell: FreezeSpell, withSalve: boolean) => {
     const s = allSpells.find((x) => x.name === spell.name) ?? null;
     const p = buildPlayer({
       name: 'freeze',
       gear: { neck: withSalve ? SALVE : null },
       styleName: 'Spell',
-      prayers: augury ? [Prayer.AUGURY] : [],
+      prayers: prayer === null ? [] : [prayer],
       potions: heart ? [Potion.SATURATED_HEART] : [],
       spell: s,
       buffs: { markOfDarknessSpell: mark },
@@ -44,7 +56,10 @@ export default function FreezeScreen() {
     return calculate(p, monster).accuracy;
   };
 
-  const ruled = (augury: boolean) => !!threshold && bonus >= (augury ? threshold.withAugury : threshold.withoutAugury);
+  // The wiki gives a threshold with Augury and one with no prayer. Any other magic prayer only adds accuracy, so the
+  // no-prayer threshold still holds with it; the Augury one doesn't.
+  const thresholdFor = threshold ? (prayer === Prayer.AUGURY ? threshold.withAugury : threshold.withoutAugury) : null;
+  const ruled = () => thresholdFor !== null && bonus >= thresholdFor;
   const bindChance = (s: FreezeSpell) => (mark ? s.markBindChance : s.bindChance);
   const ticks = (s: FreezeSpell) => {
     const r = durationRules.find((d) => d.spell === s.name && (!d.needsMark || mark));
@@ -52,19 +67,19 @@ export default function FreezeScreen() {
     if (sceptre && s.sceptreTicks) return { n: s.sceptreTicks, note: 'Ancient sceptre' };
     return { n: s.ticks, note: '' };
   };
-  const freezeChance = (s: FreezeSpell, augury: boolean, withSalve: boolean) => {
-    const formula = hitChance(s, augury, withSalve) * bindChance(s);
-    return { formula, value: ruled(augury) ? bindChance(s) : formula, ruled: ruled(augury) };
+  const freezeChance = (s: FreezeSpell, withSalve: boolean) => {
+    const formula = hitChance(s, withSalve) * bindChance(s);
+    return { formula, value: ruled() ? bindChance(s) : formula, ruled: ruled() };
   };
 
   const spell = FREEZE_SPELLS.find((s) => s.name === spellName)!;
-  const grid = useMemo(() => [true, false].map((aug) => [true, false].map((sv) => freezeChance(spell, aug, sv))), [spellName, mark, heart, bonus, target]);
+  const cells = useMemo(() => [true, false].map((sv) => freezeChance(spell, sv)), [spellName, mark, heart, bonus, target, prayer]);
   const table = useMemo(() => FREEZE_SPELLS.map((s) => {
-    const a = freezeChance(s, true, salve && undead);
-    const n = freezeChance(s, false, salve && undead);
+    const c = freezeChance(s, salve && undead);
     const t = ticks(s);
-    return { s, a, n, t, avg: a.value * t.n };
-  }), [mark, heart, bonus, target, salve, sceptre]);
+    return { s, c, t, avg: c.value * t.n };
+  }), [mark, heart, bonus, target, salve, sceptre, prayer]);
+  const prayerName = prayer === null ? 'No prayer' : PrayerMap[prayer].name;
   const bestAvg = Math.max(...table.map((x) => x.avg));
 
   const show = (c: { value: number, ruled: boolean }) => (c.ruled && c.value >= 0.999 ? 'Guaranteed' : pct(c.value));
@@ -88,6 +103,12 @@ export default function FreezeScreen() {
               ))}
             </IconRow>
           ))}
+          <IconRow label="Prayer">
+            <button type="button" className={`icon-toggle text${prayer === null ? ' on' : ''}`} aria-pressed={prayer === null} title="No prayer" onClick={() => setPrayer(null)}>None</button>
+            {MAGIC_PRAYERS.map((p) => (
+              <IconToggle key={p} label={PrayerMap[p].name} icon={prayerIcon(p)} on={prayer === p} onClick={() => setPrayer(prayer === p ? null : p)} />
+            ))}
+          </IconRow>
           <IconRow label="Buffs">
             <IconToggle label="Mark of Darkness (grasp spells)" icon={wikiImage('Mark of Darkness.png')} on={mark} onClick={() => setMark(!mark)} />
             <IconToggle label="Saturated heart" icon={wikiImage('Saturated heart.png')} on={heart} onClick={() => setHeart(!heart)} />
@@ -97,13 +118,24 @@ export default function FreezeScreen() {
           <div className="small" style={{ color: 'var(--soft)' }}>
             {spell.name}: {bindChance(spell) === 1 ? 'every hit freezes' : `${Math.round(bindChance(spell) * 100)}% of hits bind`} for {ticks(spell).n} ticks
           </div>
-          <div className="spread">
+          <label className="spread bonus-field">
             <span className="small" style={{ color: 'var(--soft)' }}>Magic attack bonus</span>
-            <Stepper label="magic attack bonus" value={bonus} min={-80} max={250} onChange={setBonus} />
-          </div>
-          <div className="row">
-            {[0, 33, 43, 70].map((v) => <button type="button" key={v} className="btn" onClick={() => setBonus(v)}>+{v}</button>)}
-          </div>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={BONUS_MIN}
+              max={BONUS_MAX}
+              aria-label="Magic attack bonus"
+              value={bonusText}
+              onChange={(e) => {
+                setBonusText(e.target.value);
+                const v = Math.trunc(Number(e.target.value));
+                if (e.target.value.trim() !== '' && Number.isFinite(v)) setBonus(Math.max(BONUS_MIN, Math.min(BONUS_MAX, v)));
+              }}
+              onBlur={() => setBonusText(String(bonus))}
+              onFocus={(e) => e.target.select()}
+            />
+          </label>
           <div className="tiny muted">The whole setup's magic attack bonus, e.g. purging staff (+37) and book of the dead (+6) = +43 before armour penalties.</div>
         </Panel>
       </aside>
@@ -111,37 +143,33 @@ export default function FreezeScreen() {
       <section className="main" aria-label="Freeze chance">
         <div className="spread">
           <h1>Freeze chance per cast</h1>
-          <span className="small muted">With and without Augury and the Salve amulet (ei)</span>
+          <span className="small muted">{prayerName}, with and without the Salve amulet (ei)</span>
         </div>
         <Panel>
-          <div className="results">
-            <div className="freeze-matrix">
-              <span />
-              <span className="row small" style={{ color: 'var(--soft)' }}><img src={itemImage(SALVE)} alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />Salve (ei){undead ? '' : ' (no effect: not undead)'}</span>
-              <span className="small" style={{ color: 'var(--soft)' }}>No Salve</span>
-              {grid.map((rowCells, ri) => [
-                <span key={`l${ri}`} className="row small" style={{ color: 'var(--soft)' }}>
-                  {ri === 0 && <img src={wikiImage('Augury.png')} alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />}
-                  {ri === 0 ? 'Augury' : 'No Augury'}
-                </span>,
-                ...rowCells.map((c, ci) => (
-                  <div key={`${ri}${ci}`} className={`freeze-cell${c.ruled ? ' ruled' : ''}`}>
-                    <span className="big" style={{ color: c.value >= 0.999 ? 'var(--teal)' : c.value >= 0.8 ? 'var(--gold)' : 'var(--text)' }}>{show(c)}</span>
-                    <span className="tiny muted">{c.ruled ? `Formula alone says ${pct(c.formula)}` : threshold ? `Below the wiki threshold (+${ri === 0 ? threshold.withAugury : threshold.withoutAugury})` : 'Wiki engine accuracy × bind chance'}</span>
-                    {c.ruled && <WikiBadge approximate={threshold?.approximate} />}
-                  </div>
-                )),
-              ])}
-            </div>
+          <div className="freeze-pair">
+            {cells.map((c, ci) => (
+              <div key={ci} className={`freeze-cell${c.ruled ? ' ruled' : ''}`}>
+                <span className="row small" style={{ color: 'var(--soft)' }}>
+                  {ci === 0 && <img src={itemImage(SALVE)} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />}
+                  {ci === 0 ? `Salve (ei)${undead ? '' : ' (no effect: not undead)'}` : 'No Salve'}
+                </span>
+                <span className="big" style={{ color: c.value >= 0.999 ? 'var(--teal)' : c.value >= 0.8 ? 'var(--gold)' : 'var(--text)' }}>{show(c)}</span>
+                <span className="tiny muted">{c.ruled ? `Formula alone says ${pct(c.formula)}` : thresholdFor !== null ? `Below the wiki threshold (+${thresholdFor})` : 'Wiki engine accuracy × bind chance'}</span>
+                {c.ruled && <WikiBadge approximate={threshold?.approximate} />}
+              </div>
+            ))}
           </div>
+          {threshold && prayer !== null && prayer !== Prayer.AUGURY && (
+            <div className="tiny muted">The wiki gives a threshold with Augury (+{threshold.withAugury}) and with no prayer (+{threshold.withoutAugury}). {prayerName} only adds accuracy, so the no-prayer one is used.</div>
+          )}
         </Panel>
 
         <Panel title="Every freeze spell on this target">
           <div className="results">
             <div className="spell-table">
-              <div className="tr head"><span>Spell</span><span>Freeze length</span><span>Binds on hit</span><span>Augury</span><span>No Augury</span><span>Avg ticks / cast</span></div>
+              <div className="tr head"><span>Spell</span><span>Freeze length</span><span>Binds on hit</span><span>Freeze chance</span><span>Avg ticks / cast</span></div>
               {table.map(({
-                s, a, n, t, avg,
+                s, c, t, avg,
               }) => (
                 <div key={s.name} className={`tr${s.name === spellName ? ' on' : ''}`}>
                   <span className="spell-name">
@@ -150,14 +178,13 @@ export default function FreezeScreen() {
                   </span>
                   <span>{t.n} ticks{t.note ? <span className="tiny muted"> ({t.note})</span> : null}</span>
                   <span>{Math.round(bindChance(s) * 100)}%</span>
-                  <span>{show(a)}</span>
-                  <span>{show(n)}</span>
+                  <span>{show(c)}</span>
                   <span style={{ fontWeight: 600, color: Math.abs(avg - bestAvg) < 0.01 ? 'var(--gold)' : undefined }}>{avg.toFixed(1)}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="tiny muted">Lengths, bind chances and levels from each spell's wiki page (linked). Grasp binds roll only on a hit; Mark of Darkness doubles them. Avg ticks = freeze chance with Augury × length.</div>
+          <div className="tiny muted">Lengths, bind chances and levels from each spell's wiki page (linked). Grasp binds roll only on a hit; Mark of Darkness doubles them. Freeze chance uses the prayer chosen on the left ({prayerName}){salve && undead ? ' and the Salve (ei)' : ''}. Avg ticks = freeze chance × length.</div>
         </Panel>
 
         {rules.length > 0 && (
@@ -168,8 +195,9 @@ export default function FreezeScreen() {
                 <div className="small" style={{ color: '#c3c9d3' }}>{r.summary}</div>
                 {r.kind === 'freeze-threshold' && (
                   <div className="row mono small">
-                    <span style={{ color: bonus >= r.withAugury ? 'var(--teal)' : 'var(--gold)' }}>With Augury: {bonus >= r.withAugury ? 'met' : `needs +${r.withAugury - bonus} more`}</span>
-                    <span style={{ color: bonus >= r.withoutAugury ? 'var(--teal)' : 'var(--gold)' }}>Without Augury: {bonus >= r.withoutAugury ? 'met' : `needs +${r.withoutAugury - bonus} more`}</span>
+                    <span style={{ color: bonus >= (thresholdFor ?? 0) ? 'var(--teal)' : 'var(--gold)' }}>
+                      {prayerName} (+{thresholdFor}): {bonus >= (thresholdFor ?? 0) ? 'met' : `needs +${(thresholdFor ?? 0) - bonus} more`}
+                    </span>
                   </div>
                 )}
                 <div className="tiny muted">Source: <a href={wikiUrl(r.source.page)} target="_blank" rel="noreferrer">OSRS Wiki · {r.source.page}</a> (revision {r.source.revision})</div>

@@ -186,8 +186,8 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .freeze-cell { background: var(--inset); border: 2px solid var(--line-soft); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px; min-height: 96px; }
 .freeze-cell.ruled { border-color: #2f4a42; }
 .freeze-cell .big { font-family: var(--mono); font-size: 26px; font-weight: 600; }
-.spell-table { min-width: 780px; display: flex; flex-direction: column; }
-.spell-table .tr { display: grid; grid-template-columns: 230px 160px 90px 120px 120px 110px; gap: 8px; padding: 6px; border-bottom: 1px solid var(--line-soft); align-items: center; font-family: var(--mono); font-size: 14px; }
+.spell-table { min-width: 560px; display: flex; flex-direction: column; }
+.spell-table .tr { display: grid; grid-template-columns: minmax(170px, 2fr) minmax(110px, 1.3fr) minmax(64px, 0.7fr) minmax(90px, 1fr) minmax(80px, 0.9fr); gap: 8px; padding: 6px; border-bottom: 1px solid var(--line-soft); align-items: center; font-family: var(--mono); font-size: 14px; }
 .spell-table .tr.head { font-family: var(--sans); font-size: 12px; color: var(--muted); border-bottom-color: var(--line); }
 .spell-table .tr.on { background: #22262d; }
 .spell-name { display: flex; align-items: center; gap: 10px; font-family: var(--sans); }
@@ -263,3 +263,11 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .bank-list-main { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .bank-list-main input { flex: 1; min-height: 36px; }
 input[aria-invalid='true'] { border-color: var(--loss); }
+
+/* freeze check */
+.bonus-field { gap: 12px; }
+.bonus-field input { width: 120px; min-width: 0; height: 44px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--control); background: var(--inset); color: var(--text-strong); font-family: var(--mono); font-size: 22px; font-weight: 600; text-align: center; -moz-appearance: textfield; }
+.bonus-field input::-webkit-outer-spin-button, .bonus-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.freeze-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.icon-toggle.text { width: auto; padding: 0 10px; font-size: 13px; font-weight: 600; color: var(--text); }
