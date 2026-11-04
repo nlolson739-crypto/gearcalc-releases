@@ -34,7 +34,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, { 
       <div className="update-backdrop">
         <div className="update-card">
           <h2>Something went wrong</h2>
-          <p className="small">GearCalc couldn't draw this screen. If it keeps happening after a restart, your saved setups may be from an older version: resetting them usually fixes it.</p>
+          <p className="small">GearCalc couldn't draw this screen. If it keeps happening after a restart, your saved setups may be from an older version: resetting them usually fixes it. Imported banks are kept.</p>
           <pre className="tiny muted" style={{ whiteSpace: 'pre-wrap', maxHeight: 160, overflow: 'auto', margin: 0 }}>{this.state.error.message}</pre>
           <div className="row end">
             <button type="button" className="btn" onClick={() => window.location.reload()}>Reload</button>

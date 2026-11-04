@@ -1,5 +1,6 @@
 """GearCalc desktop launcher: shows the built web app (web/) in its own window via Edge WebView2, and exposes the
 updater to the page (window.pywebview.api) so the update prompt is part of GearCalc's own UI."""
+import json
 import logging
 import os
 import shutil
@@ -17,6 +18,8 @@ APP_NAME = 'GearCalc'
 # Saved setups live in the page's local storage, which is tied to the address, so the port must stay the same.
 PORT = 47317
 DATA_DIR = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), APP_NAME)
+# A copy of the imported banks outside the web view's storage, so updates or a lost profile can't remove them.
+BANKS_FILE = os.path.join(DATA_DIR, 'banks.json')
 
 
 def resource(path: str) -> str:
@@ -142,6 +145,30 @@ class Api:
         """The clipboard's text, for the bank import's Paste button. The page can't read it itself: WebView2 asks for
         permission first, and pywebview has no handler for that request, so navigator.clipboard.readText fails."""
         return read_clipboard_text()
+
+    def load_banks(self):
+        """The backed-up banks (JSON text), or None if there's no backup yet."""
+        try:
+            with open(BANKS_FILE, encoding='utf-8') as f:
+                return f.read()
+        except OSError:
+            return None
+
+    def save_banks(self, text):
+        """Replaces the bank backup. Written to a temp file first, so a crash mid-write keeps the old copy."""
+        try:
+            text = str(text)
+            data = json.loads(text)
+            if not isinstance(data, dict) or not isinstance(data.get('banks'), list) or len(text) > 50_000_000:
+                return False
+            tmp = BANKS_FILE + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.write(text)
+            os.replace(tmp, BANKS_FILE)
+            return True
+        except Exception as e:  # disk full, file locked: the page's own storage still has them
+            logging.info('could not back up banks: %s', e)
+            return False
 
     def refresh_wiki_data(self):
         """Fetches newer monster/gear/spell data from the wiki, at most once a day. The page reloads to use it."""

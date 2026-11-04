@@ -106,34 +106,115 @@ export const DEFAULT_STATE: AppState = {
 };
 
 const STORAGE_KEY = 'gearcalc-state-v1';
+/**
+ * Imported banks are also kept under their own key (since v0.34), so resetting saved setups or a save that can't be
+ * read never takes the banks with it. The desktop app also copies them to %APPDATA%\GearCalc\banks.json (see
+ * useBankBackup), which survives even if the web view's storage is lost.
+ */
+const BANKS_KEY = 'gearcalc-banks-v1';
+type SavedBanks = Pick<AppState, 'banks' | 'activeBank'>;
+
+/** Bank names are unique since v0.29; gives older repeats a number ("Main", "Main (2)"). */
+function uniqueBankNames(banks: Bank[]): Bank[] {
+  const seen = new Set<string>();
+  return banks.map((b) => {
+    const base = String(b.name ?? '').trim() || 'Bank';
+    let name = base;
+    for (let n = 2; seen.has(name.toLowerCase()); n++) name = `${base} (${n})`;
+    seen.add(name.toLowerCase());
+    return { ...b, name };
+  });
+}
+
+const isBank = (b: unknown): b is Bank => !!b && typeof b === 'object' && typeof (b as Bank).id === 'string'
+  && Array.isArray((b as Bank).items);
+
+/** Reads a banks record ({ banks, activeBank }); null if it isn't one. */
+export function toSavedBanks(v: unknown): SavedBanks | null {
+  const r = v as Partial<SavedBanks> | null;
+  if (!r || typeof r !== 'object' || !Array.isArray(r.banks)) return null;
+  const banks = uniqueBankNames(r.banks.filter(isBank));
+  const activeBank = typeof r.activeBank === 'string' && banks.some((b) => b.id === r.activeBank) ? r.activeBank : null;
+  return { banks, activeBank };
+}
+
+const parseSavedBanks = (raw: string | null | undefined): SavedBanks | null => {
+  if (!raw) return null;
+  try { return toSavedBanks(JSON.parse(raw)); } catch { return null; }
+};
+
+function loadBanks(): SavedBanks | null {
+  try { return parseSavedBanks(localStorage.getItem(BANKS_KEY)); } catch { return null; }
+}
 
 function load(): AppState {
+  const banks = loadBanks();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const saved = JSON.parse(raw);
+      let saved;
+      try {
+        saved = JSON.parse(raw);
+      } catch (e) {
+        // keep the unreadable save instead of letting the defaults overwrite it
+        try { localStorage.setItem(`${STORAGE_KEY}-unreadable`, raw); } catch { /* ignore */ }
+        throw e;
+      }
       // v0.24 and earlier kept a single `prayer`
       if (saved.buffs && !Array.isArray(saved.buffs.prayers)) {
         saved.buffs.prayers = saved.buffs.prayer === null || saved.buffs.prayer === undefined ? [] : [saved.buffs.prayer];
         delete saved.buffs.prayer;
       }
-      // bank names are unique since v0.29; give older repeats a number ("Main", "Main (2)")
-      if (Array.isArray(saved.banks)) {
-        const seen = new Set<string>();
-        saved.banks = saved.banks.map((b: Bank) => {
-          const base = String(b.name ?? '').trim() || 'Bank';
-          let name = base;
-          for (let n = 2; seen.has(name.toLowerCase()); n++) name = `${base} (${n})`;
-          seen.add(name.toLowerCase());
-          return { ...b, name };
-        });
-      }
+      // the banks key wins: it's kept even when the setups are reset (saves before v0.34 only have them in here)
+      Object.assign(saved, banks ?? toSavedBanks(saved) ?? { banks: [], activeBank: null });
       // phases were added in v0.33
       if (!saved.phases || typeof saved.phases !== 'object' || Array.isArray(saved.phases)) saved.phases = {};
       return { ...DEFAULT_STATE, ...saved };
     }
-  } catch { /* private window or blocked storage: use defaults */ }
-  return DEFAULT_STATE;
+  } catch { /* private window, blocked storage or an unreadable save: use defaults */ }
+  return { ...DEFAULT_STATE, ...banks };
+}
+
+type BackupApi = { load_banks?: () => Promise<string | null>, save_banks?: (text: string) => Promise<boolean> };
+const backupApi = (): BackupApi | undefined => (window as unknown as { pywebview?: { api?: BackupApi } }).pywebview?.api;
+
+/**
+ * Desktop app only: keeps a copy of the imported banks in %APPDATA%\GearCalc\banks.json. On start, banks that are in
+ * the file but missing from the page's storage (lost storage, a reset) are put back; after that every change is
+ * written to the file. Nothing is written before that first read, so an empty start can't wipe the backup.
+ */
+function useBankBackup(state: AppState, setState: (f: (s: AppState) => AppState) => void) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const restore = async () => {
+      const api = backupApi();
+      if (typeof api?.load_banks !== 'function') return; // a plain browser: storage only
+      try {
+        const file = parseSavedBanks(await api.load_banks());
+        if (!cancelled && file?.banks.length) {
+          setState((s) => {
+            const have = new Set(s.banks.map((b) => b.id));
+            const missing = file.banks.filter((b) => !have.has(b.id));
+            if (!missing.length) return s;
+            const activeBank = s.activeBank ?? (s.banks.length ? null : file.activeBank);
+            return { ...s, banks: uniqueBankNames([...s.banks, ...missing]), activeBank };
+          });
+        }
+      } catch { /* unreadable backup: keep what the page has */ }
+      if (!cancelled) setReady(true);
+    };
+    // pywebview adds the api's methods late: they're usable after 'pywebviewready' (or now, if that already happened)
+    if (backupApi()?.load_banks) restore();
+    else window.addEventListener('pywebviewready', restore, { once: true });
+    return () => { cancelled = true; window.removeEventListener('pywebviewready', restore); };
+  }, [setState]);
+  useEffect(() => {
+    const api = backupApi();
+    if (ready && typeof api?.save_banks === 'function') {
+      api.save_banks(JSON.stringify({ banks: state.banks, activeBank: state.activeBank })).catch(() => {});
+    }
+  }, [ready, state.banks, state.activeBank]);
 }
 
 export function useAppState() {
@@ -141,6 +222,10 @@ export function useAppState() {
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* ignore */ }
   }, [state]);
+  useEffect(() => {
+    try { localStorage.setItem(BANKS_KEY, JSON.stringify({ banks: state.banks, activeBank: state.activeBank })); } catch { /* ignore */ }
+  }, [state.banks, state.activeBank]);
+  useBankBackup(state, setState);
   return [state, setState] as const;
 }
 
