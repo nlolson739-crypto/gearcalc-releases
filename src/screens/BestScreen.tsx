@@ -284,6 +284,14 @@ export default function BestScreen({ state, setState }: Props) {
 
   const metricLabel = goal === 'spec' ? 'Expected Defence drained' : goal === 'ttk' ? 'Time to kill' : 'DPS';
   const fmt = (v: number) => (goal === 'spec' ? v.toFixed(1) : goal === 'ttk' ? fmtTime(-v) : v.toFixed(2));
+  // How another weapon compares with the shown build, in percent of the ranked number: DPS and spec drain go down
+  // ("−15.9%"), time to kill goes up ("+18.9%"). Falls back to the plain number if there is nothing to divide by.
+  const vsBest = (v: number, best: number) => {
+    const [o, b] = goal === 'ttk' ? [-v, -best] : [v, best];
+    if (!Number.isFinite(o) || !Number.isFinite(b) || b <= 0) return fmt(v);
+    const d = Math.round(((o - b) / b) * 1000) / 10;
+    return d === 0 ? 'same' : `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}%`;
+  };
   const toggleFamily = (f: Family) => setFamilies((l) => (l.includes(f) ? (l.length > 1 ? l.filter((x) => x !== f) : l) : [...l, f]));
 
   return (
@@ -364,7 +372,9 @@ export default function BestScreen({ state, setState }: Props) {
                   {SLOTS.filter((s) => s !== 'weapon' && g[s]).map((s) => <span key={s} className="item-icon" title={g[s]!.name}><img src={itemImage(g[s])} alt={g[s]!.name} /></span>)}
                 </div>
                 {f.others.length > 0 && (
-                  <span className="tiny muted">Other {f.category.label.toLowerCase()} weapons: {f.others.map((o) => `${o.name} (${fmt(o.score)})`).join(' · ')}</span>
+                  <span className="tiny muted" title={f.others.map((o) => `${o.name}: ${fmt(o.score)} ${metricLabel}`).join(' · ')}>
+                    Other {f.category.label.toLowerCase()} weapons, {goal === 'ttk' ? 'time to kill' : goal === 'spec' ? 'drain' : 'DPS'} vs this one: {f.others.map((o) => `${o.name} (${vsBest(o.score, f.score)})`).join(' · ')}
+                  </span>
                 )}
               </div>
               <div className="metric"><span>{metricLabel}</span><span>{fmt(f.score)}</span></div>
