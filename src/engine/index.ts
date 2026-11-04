@@ -1,7 +1,8 @@
 // Thin wrapper over the OSRS Wiki DPS engine (vendor/osrs-dps-calc). All combat maths happens in the engine;
 // this file only builds the Player and Monster objects it expects from GearCalc's simpler choices.
 import PlayerVsNPCCalc from '@/lib/PlayerVsNPCCalc';
-import { getMonsters, INITIAL_MONSTER_INPUTS } from '@/lib/Monsters';
+import { createMonsterInputs, getMonsters, INITIAL_MONSTER_INPUTS } from '@/lib/Monsters';
+import { MONSTER_PHASES_BY_ID } from '@/lib/constants';
 import {
   availableEquipment, calculateAttackSpeed, calculateEquipmentBonusesFromGear,
 } from '@/lib/Equipment';
@@ -51,14 +52,31 @@ export const findMonster = (name: string, version = '') => baseMonsters.find(
   (m) => m.name === name && (!version || m.version === version),
 );
 
-/** A monster ready for the engine, with GearCalc's defence reductions and current HP applied as inputs. */
-export function prepareMonster(base: Omit<Monster, 'inputs'>, reductions: Partial<DefenceReductions> = {}): Monster {
+/** The fight phases the wiki engine knows for a monster (e.g. Ocellus Phase 3 / 4, Bork stunned); empty if none. */
+export const phasesFor = (m: { id: number }): readonly string[] => MONSTER_PHASES_BY_ID[m.id] ?? [];
+
+/** The phase the engine will use: the chosen one if this monster has it, else its first phase (as the wiki does). */
+export const phaseFor = (m: { id: number }, phase?: string | null): string | undefined => {
+  const phases = phasesFor(m);
+  return phase && phases.includes(phase) ? phase : phases[0];
+};
+
+/**
+ * A monster ready for the engine, with GearCalc's defence reductions, current HP and fight phase applied as inputs.
+ * Without a phase (or with one this monster doesn't have) it gets its first phase, like the wiki's createMonsterInputs.
+ */
+export function prepareMonster(
+  base: Omit<Monster, 'inputs'>,
+  reductions: Partial<DefenceReductions> = {},
+  phase?: string | null,
+): Monster {
   return {
     ...base,
     inputs: {
-      ...INITIAL_MONSTER_INPUTS,
+      ...createMonsterInputs(base.id),
       monsterCurrentHp: base.skills.hp,
       defenceReductions: { ...NO_REDUCTIONS, ...reductions },
+      phase: phaseFor(base, phase),
     },
   } as Monster;
 }

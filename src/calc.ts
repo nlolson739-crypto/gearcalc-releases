@@ -1,9 +1,9 @@
 import {
-  allSpells, buildPlayer, calculate, prepareMonster, scaledMonster, type CalcResult, type DefenceReductions, type EquipmentPiece, type Monster,
+  allSpells, buildPlayer, calculate, scaledMonster, type CalcResult, type DefenceReductions, type EquipmentPiece, type Monster,
 } from '~/engine';
 import { THRALLS } from '~/rules/wiki';
 import {
-  baseMonster, gearOf, itemById, type AppState, type Buffs, type Setup,
+  gearOf, itemById, targetMonster, type AppState, type Buffs, type Setup,
 } from '~/state';
 
 export interface SetupResult extends CalcResult {
@@ -85,7 +85,7 @@ export function runSpec(setup: Setup, buffs: Buffs, monster: Monster, state: App
     if (key === 'bgs') red.bgs += Math.round(r.maxHit / 2);
     else if (key === 'tonalztic') red.tonalztic += 2;
     else (red[key] as number) += 1;
-    defenceAfter = scaledMonster(prepareMonster(baseMonster(state.target), red)).skills.def;
+    defenceAfter = scaledMonster(targetMonster(state, red)).skills.def;
   }
   return {
     weapon, accuracy: r.accuracy, maxHit: r.maxHit, defenceAfter,

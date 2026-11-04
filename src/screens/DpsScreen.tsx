@@ -4,14 +4,14 @@ import { PotionMap } from '@/utils';
 import { PrayerMap } from '@/enums/Prayer';
 import { getCdnImage } from '@/utils';
 import {
-  allSpells, findItem, SLOTS, scaledMonster, stylesFor, type Slot,
+  allSpells, findItem, NO_REDUCTIONS, SLOTS, scaledMonster, stylesFor, type Slot,
 } from '~/engine';
 import { runSetup, runSpec } from '~/calc';
 import {
-  baseMonster, EXTRA_MONSTERS, gearOf, itemById, SETUP_COLORS, targetMonster, type AppState, type Buffs, type Setup,
+  baseMonster, EXTRA_MONSTERS, gearOf, itemById, SETUP_COLORS, targetMonster, withPhase, type AppState, type Buffs, type Setup,
 } from '~/state';
 import {
-  fmtTime, itemImage, MonsterPicker, Panel, pct, SlotButton, Stepper,
+  fmtTime, itemImage, MonsterPicker, Panel, pct, PhasePicker, SlotButton, Stepper,
 } from '~/ui/common';
 import BuffBar from '~/ui/BuffBar';
 
@@ -26,9 +26,13 @@ const SLOT_LABEL: Record<Slot, string> = {
   head: 'Head', cape: 'Cape', neck: 'Neck', ammo: 'Ammo', weapon: 'Weapon', body: 'Body', shield: 'Shield', legs: 'Legs', hands: 'Hands', feet: 'Feet', ring: 'Ring',
 };
 
+const signed = (n: number) => (n < 0 ? `−${-n}` : `+${n}`);
+
 export default function DpsScreen({ state, setState }: Props) {
   const monster = targetMonster(state);
   const after = scaledMonster(monster);
+  // this phase before any drains: what the drained numbers are compared with
+  const fresh = scaledMonster(targetMonster(state, NO_REDUCTIONS));
   const base = baseMonster(state.target);
   const { buffs } = state;
   const setBuffs = (f: (b: Buffs) => Buffs) => setState((s) => ({ ...s, buffs: f(s.buffs) }));
@@ -74,19 +78,20 @@ export default function DpsScreen({ state, setState }: Props) {
       <aside className="side" aria-label="Target and buffs">
         <Panel title="Target">
           <MonsterPicker value={state.target} onChange={(k) => setState((s) => ({ ...s, target: k }))} extra={EXTRA_MONSTERS} />
+          <PhasePicker monster={base} value={state.phases[state.target]} onChange={(p) => setState((s) => withPhase(s, p))} />
           <div className="row">
             {base.image && <img src={getCdnImage(`monsters/${base.image}`)} alt="" style={{ maxHeight: 64, maxWidth: 80 }} />}
             <div className="small muted">{base.attributes.length ? base.attributes.join(', ') : 'No special attributes'}</div>
           </div>
           <div className="stat-grid">
             <div className="stat"><span>Hitpoints</span><span>{base.skills.hp}</span></div>
-            <div className="stat"><span>Defence</span><span>{after.skills.def}{after.skills.def !== base.skills.def ? ` / ${base.skills.def}` : ''}</span></div>
+            <div className="stat"><span>Defence</span><span>{after.skills.def}{after.skills.def !== fresh.skills.def ? ` / ${fresh.skills.def}` : ''}</span></div>
             <div className="stat"><span>Magic</span><span>{after.skills.magic}</span></div>
-            <div className="stat"><span>Stab def</span><span>+{base.defensive.stab}</span></div>
-            <div className="stat"><span>Slash def</span><span>+{base.defensive.slash}</span></div>
-            <div className="stat"><span>Crush def</span><span>+{base.defensive.crush}</span></div>
-            <div className="stat"><span>Magic def</span><span>+{base.defensive.magic}</span></div>
-            <div className="stat"><span>Ranged def</span><span>+{base.defensive.standard}</span></div>
+            <div className="stat"><span>Stab def</span><span>{signed(fresh.defensive.stab)}</span></div>
+            <div className="stat"><span>Slash def</span><span>{signed(fresh.defensive.slash)}</span></div>
+            <div className="stat"><span>Crush def</span><span>{signed(fresh.defensive.crush)}</span></div>
+            <div className="stat"><span>Magic def</span><span>{signed(fresh.defensive.magic)}</span></div>
+            <div className="stat"><span>Ranged def</span><span>{signed(fresh.defensive.standard)}</span></div>
           </div>
           <div className="maul-row">
             <img src={itemImage(findItem('Elder maul'))} alt="" />

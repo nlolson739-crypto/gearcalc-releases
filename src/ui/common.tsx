@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { getCdnImage, getWikiImage } from '@/utils';
-import { equipment, monsters, monsterKey, type EquipmentPiece, type Slot } from '~/engine';
+import {
+  equipment, monsters, monsterKey, phaseFor, phasesFor, type EquipmentPiece, type Slot,
+} from '~/engine';
 import { isModeOnlyItem } from '~/rules/wiki';
 import { RAIDS } from '~/raids';
 import { makeSearch } from '~/search';
@@ -207,6 +209,31 @@ export function MonsterPicker({ value, onChange, extra = [] }: {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/**
+ * The wiki engine's fight phases for a monster (Ocellus Phase 3 / 4, Bork's Smork HP and Stunned, Tormented Demon
+ * shields, ...). Shows nothing for monsters without phases.
+ */
+export function PhasePicker({ monster, value, onChange }: {
+  monster: { id: number }, value: string | undefined, onChange: (phase: string) => void,
+}) {
+  const phases = phasesFor(monster);
+  if (!phases.length) return null;
+  const current = phaseFor(monster, value);
+  // buttons rather than a dropdown: the names are long and differ at the end ("... With Speed-Up" / "... No Speed-Up")
+  return (
+    <div className="phase-picker">
+      <span className="small" style={{ color: 'var(--soft)' }}>Phase</span>
+      <div role="group" aria-label="Phase" className="segmented phase-list">
+        {phases.map((p) => (
+          <button type="button" key={p} className={p === current ? 'on' : ''} aria-pressed={p === current} onClick={() => onChange(p)}>
+            <span>{p}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

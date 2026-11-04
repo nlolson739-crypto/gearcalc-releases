@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import {
-  defenceFloor, findItem, NO_REDUCTIONS, prepareMonster, scaledMonster, type DefenceReductions,
+  defenceFloor, findItem, NO_REDUCTIONS, scaledMonster, type DefenceReductions,
 } from '~/engine';
 import RaidBossList from '~/ui/RaidBossList';
 import ReductionControls, { SPECS } from '~/ui/ReductionControls';
-import { baseMonster, EXTRA_MONSTERS, type AppState } from '~/state';
 import {
-  itemImage, MonsterPicker, Panel, wikiImage,
+  baseMonster, EXTRA_MONSTERS, targetMonster, targetPhase, withPhase, type AppState,
+} from '~/state';
+import {
+  itemImage, MonsterPicker, Panel, PhasePicker, wikiImage,
 } from '~/ui/common';
 
 type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
@@ -22,7 +24,10 @@ export default function DefenceScreen({ state, setState }: Props) {
   const base = baseMonster(state.target);
   const r = state.reductions;
   const setR = (patch: Partial<DefenceReductions>) => setState((s) => ({ ...s, reductions: { ...s.reductions, ...patch } }));
-  const m = prepareMonster(base, r);
+  const phase = targetPhase(state);
+  const m = targetMonster(state);
+  // this phase before any drains (phases can change stats, e.g. Bork stunned or Araxxor enraged)
+  const fresh = scaledMonster(targetMonster(state, NO_REDUCTIONS));
   const after = scaledMonster(m);
   const floor = defenceFloor(m);
   const def = after.skills.def;
@@ -31,17 +36,17 @@ export default function DefenceScreen({ state, setState }: Props) {
   const toCap = useMemo(() => SPECS.filter((s) => ['elderMaul', 'dwh', 'arclight', 'emberlight', 'tonalztic'].includes(s.key)).map((s) => {
     if (floor === 0) return `${s.item.split(' ')[0]} –`;
     let n = 0;
-    while (n < 40 && scaledMonster(prepareMonster(base, { ...NO_REDUCTIONS, [s.key]: n })).skills.def > floor) n++;
+    while (n < 40 && scaledMonster(targetMonster(state, { ...NO_REDUCTIONS, [s.key]: n })).skills.def > floor) n++;
     return `${s.item === 'Tonalztics of Ralos' ? 'Ralos' : s.item.replace('Dragon warhammer', 'DWH')} ${n >= 40 ? 'n/a' : n}${s.key === 'tonalztic' ? ' hits' : ''}`;
-  }), [state.target, floor]);
+  }), [state.target, phase, floor]);
 
   const skills: [string, string, number, number][] = [
-    ['Attack', 'Attack icon.png', base.skills.atk, after.skills.atk],
-    ['Strength', 'Strength icon.png', base.skills.str, after.skills.str],
-    ['Defence', 'Defence icon.png', base.skills.def, after.skills.def],
-    ['Magic', 'Magic icon.png', base.skills.magic, after.skills.magic],
-    ['Ranged', 'Ranged icon.png', base.skills.ranged, after.skills.ranged],
-    ['Magic defence', 'Magic defence icon.png', base.defensive.magic, after.defensive.magic],
+    ['Attack', 'Attack icon.png', fresh.skills.atk, after.skills.atk],
+    ['Strength', 'Strength icon.png', fresh.skills.str, after.skills.str],
+    ['Defence', 'Defence icon.png', fresh.skills.def, after.skills.def],
+    ['Magic', 'Magic icon.png', fresh.skills.magic, after.skills.magic],
+    ['Ranged', 'Ranged icon.png', fresh.skills.ranged, after.skills.ranged],
+    ['Magic defence', 'Magic defence icon.png', fresh.defensive.magic, after.defensive.magic],
   ];
 
   return (
@@ -49,6 +54,7 @@ export default function DefenceScreen({ state, setState }: Props) {
       <aside className="side" aria-label="Bosses">
         <Panel title="Target">
           <MonsterPicker value={state.target} onChange={(k) => setState((s) => ({ ...s, target: k }))} extra={EXTRA_MONSTERS} />
+          <PhasePicker monster={base} value={state.phases[state.target]} onChange={(p) => setState((s) => withPhase(s, p))} />
         </Panel>
         <RaidBossList target={state.target} onPick={(key) => setState((s) => ({ ...s, target: key, reductions: { ...NO_REDUCTIONS } }))} />
       </aside>
@@ -56,7 +62,7 @@ export default function DefenceScreen({ state, setState }: Props) {
       <section className="main" aria-label="Defence reduction">
         <Panel>
           <div className="spread">
-            <h1>{base.name}{base.version ? ` · ${base.version}` : ''}</h1>
+            <h1>{base.name}{base.version ? ` · ${base.version}` : ''}{phase && phase !== base.version ? ` · ${phase}` : ''}</h1>
             <span className="small muted">{base.attributes.includes('demon' as never) ? 'Demon · ' : ''}{floor > 0 ? `Drain floor ${floor}` : 'No drain floor'}</span>
           </div>
           <div className="row" style={{ alignItems: 'flex-end', gap: '12px 28px' }}>
@@ -69,8 +75,8 @@ export default function DefenceScreen({ state, setState }: Props) {
             </div>
           </div>
           <div className="bar">
-            <div style={{ width: `${(def / Math.max(1, base.skills.def)) * 100}%` }} />
-            {floor > 0 && <i style={{ left: `${(floor / base.skills.def) * 100}%` }} />}
+            <div style={{ width: `${(def / Math.max(1, fresh.skills.def)) * 100}%` }} />
+            {floor > 0 && <i style={{ left: `${(floor / Math.max(1, fresh.skills.def)) * 100}%` }} />}
           </div>
         </Panel>
 

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  allSpells, calculate, defenceFloor, EquipmentCategory, equipment, findItem, prepareMonster, scaledMonster, SLOTS, stylesFor,
+  allSpells, calculate, defenceFloor, EquipmentCategory, equipment, findItem, NO_REDUCTIONS, scaledMonster, SLOTS, stylesFor,
   type DefenceReductions, type EquipmentPiece, type PlayerCombatStyle, type Slot,
 } from '~/engine';
 import {
@@ -8,10 +8,10 @@ import {
 } from '@/lib/Equipment';
 import { drainKeyFor, playerFor, runSetup } from '~/calc';
 import {
-  baseMonster, EXTRA_MONSTERS, gearOf, targetMonster, type AppState, type Setup,
+  baseMonster, EXTRA_MONSTERS, gearOf, targetMonster, targetPhase, withPhase, type AppState, type Setup,
 } from '~/state';
 import {
-  fmtTime, itemImage, MonsterPicker, Panel, Segmented,
+  fmtTime, itemImage, MonsterPicker, Panel, PhasePicker, Segmented,
 } from '~/ui/common';
 import { ownedChecker } from '~/bank';
 import { isModeOnlyItem } from '~/rules/wiki';
@@ -124,9 +124,10 @@ export default function BestScreen({ state, setState }: Props) {
   const cancel = useRef(false);
 
   const monster = targetMonster(state);
-  const inputsKey = JSON.stringify([state.target, state.reductions, state.buffs, state.activeBank, families, goal]);
+  const inputsKey = JSON.stringify([state.target, targetPhase(state), state.reductions, state.buffs, state.activeBank, families, goal]);
   const setR = (patch: Partial<DefenceReductions>) => setState((s) => ({ ...s, reductions: { ...s.reductions, ...patch } }));
   const base = baseMonster(state.target);
+  const defFresh = scaledMonster(targetMonster(state, NO_REDUCTIONS)).skills.def;
   const defNow = scaledMonster(monster).skills.def;
   const floor = defenceFloor(monster);
 
@@ -141,7 +142,7 @@ export default function BestScreen({ state, setState }: Props) {
       else if (key === 'tonalztic') red.tonalztic += 2;
       else (red[key] as number) += 1;
       const before = scaledMonster(monster).skills.def;
-      const after = scaledMonster(prepareMonster(baseMonster(state.target), red)).skills.def;
+      const after = scaledMonster(targetMonster(state, red)).skills.def;
       return r.accuracy * (before - after);
     }
     const r = runSetup(s, state.buffs, monster);
@@ -290,6 +291,7 @@ export default function BestScreen({ state, setState }: Props) {
       <aside className="side" aria-label="Search options">
         <Panel title="Find the best setup">
           <MonsterPicker value={state.target} onChange={(k) => setState((s) => ({ ...s, target: k }))} extra={EXTRA_MONSTERS} />
+          <PhasePicker monster={base} value={state.phases[state.target]} onChange={(p) => setState((s) => withPhase(s, p))} />
           <div className="small" style={{ color: 'var(--soft)' }}>Gear to use</div>
           <BankPicker state={state} setState={setState} />
           <div className="small" style={{ color: 'var(--soft)' }}>Rank by</div>
@@ -325,7 +327,7 @@ export default function BestScreen({ state, setState }: Props) {
         <Panel title="Defence reductions">
           <div className="spread small">
             <span>
-              Defence <span className="mono">{base.skills.def}</span> → <strong className="mono" style={{ color: floor > 0 && defNow <= floor ? 'var(--teal)' : 'var(--text-strong)' }}>{defNow}</strong>
+              Defence <span className="mono">{defFresh}</span> → <strong className="mono" style={{ color: floor > 0 && defNow <= floor ? 'var(--teal)' : 'var(--text-strong)' }}>{defNow}</strong>
             </span>
             <span className="tiny muted">{floor > 0 ? `floor ${floor}` : 'no floor'}</span>
           </div>
@@ -342,7 +344,7 @@ export default function BestScreen({ state, setState }: Props) {
         <div aria-live="polite" className="sr-only">{used ? `Copied into setup ${state.setups.findIndex((s) => used.endsWith(`:${s.id}`)) + 1}` : ''}</div>
         {found.length > 0 && progress === null && searchedWith !== inputsKey && (
           <div className="stale-note">
-            <span>The target, buffs, defence reductions or gear changed since this search.</span>
+            <span>The target, phase, buffs, defence reductions or gear changed since this search.</span>
             <button type="button" className="btn" onClick={run}>Search again</button>
           </div>
         )}

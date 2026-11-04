@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  findItem, findMonster, monsterKey, monsters, NO_REDUCTIONS, Potion, prepareMonster, Prayer,
+  findItem, findMonster, monsterKey, monsters, NO_REDUCTIONS, phaseFor, Potion, prepareMonster, Prayer,
   type DefenceReductions, type EquipmentPiece, type Monster, type Slot,
 } from '~/engine';
 import { XARTH_CORPSE } from '~/rules/wiki';
@@ -39,6 +39,8 @@ export interface Buffs {
 
 export interface AppState {
   target: string;
+  /** chosen fight phase per target key (only for monsters the wiki engine gives phases); missing = the first phase */
+  phases: Record<string, string>;
   reductions: DefenceReductions;
   buffs: Buffs;
   setups: Setup[];
@@ -80,6 +82,7 @@ const torva = {
 
 export const DEFAULT_STATE: AppState = {
   target: p3 ? monsterKey(p3) : monsterKey(monsters[0]),
+  phases: {},
   reductions: { ...NO_REDUCTIONS, elderMaul: 2 },
   buffs: {
     prayers: [Prayer.PIETY, Prayer.RIGOUR, Prayer.AUGURY], potions: [Potion.SUPER_COMBAT], thrall: 3, onSlayerTask: false, markOfDarkness: false, charge: false,
@@ -125,6 +128,8 @@ function load(): AppState {
           return { ...b, name };
         });
       }
+      // phases were added in v0.33
+      if (!saved.phases || typeof saved.phases !== 'object' || Array.isArray(saved.phases)) saved.phases = {};
       return { ...DEFAULT_STATE, ...saved };
     }
   } catch { /* private window or blocked storage: use defaults */ }
@@ -152,7 +157,16 @@ export function baseMonster(key: string): Omit<Monster, 'inputs'> {
     ?? monsters[0];
 }
 
-export const targetMonster = (s: AppState): Monster => prepareMonster(baseMonster(s.target), s.reductions);
+/** The chosen phase of the current target, as the engine will use it (undefined for monsters without phases). */
+export const targetPhase = (s: AppState): string | undefined => phaseFor(baseMonster(s.target), s.phases?.[s.target]);
+
+/** The current target ready for the engine: its phase plus the given drains (default: the saved ones). */
+export const targetMonster = (s: AppState, reductions: Partial<DefenceReductions> = s.reductions): Monster => prepareMonster(
+  baseMonster(s.target), reductions, s.phases?.[s.target],
+);
+
+/** Sets the phase for the current target. */
+export const withPhase = (s: AppState, phase: string): AppState => ({ ...s, phases: { ...s.phases, [s.target]: phase } });
 
 export const gearOf = (setup: Setup) => Object.fromEntries(
   Object.entries(setup.gear).map(([slot, id]) => [slot, itemById(id)]),

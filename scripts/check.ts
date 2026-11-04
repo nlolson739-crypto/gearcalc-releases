@@ -1,6 +1,6 @@
 // Sanity checks for the engine wrapper. Run with: deno task check
 import {
-  buildPlayer, calculate, defenceFloor, findItem, findMonster, Potion, prepareMonster, Prayer, scaledMonster,
+  buildPlayer, calculate, defenceFloor, findItem, findMonster, phasesFor, Potion, prepareMonster, Prayer, scaledMonster,
 } from '~/engine';
 
 const need = <T>(x: T | undefined, what: string): T => {
@@ -43,6 +43,33 @@ for (const [n, v] of bosses) {
   const d1 = scaledMonster(prepareMonster(b, { elderMaul: 1 })).skills.def;
   const d2 = scaledMonster(prepareMonster(b, { elderMaul: 2 })).skills.def;
   console.log(`  ${(n + ' ' + v).padEnd(26)} ${b.skills.def} -> ${d1} -> ${d2}  (floor ${defenceFloor(prepareMonster(b))})`);
+}
+
+// Fight phases from the wiki engine (MONSTER_PHASES_BY_ID): same gear, phase chosen vs the default first phase.
+{
+  const bork = need(findMonster('Bork', ''), 'Bork');
+  console.log(`
+Phases (Torva scythe, Piety, super combat; ${phasesFor(p3).length} Ocellus P3 phases, ${phasesFor(bork).length} Bork phases):`);
+  const cases: [string, typeof p3, string | undefined, string][] = [
+    ['Ocellus P3', p3, undefined, 'Chop'],
+    ['Ocellus P3', p3, 'Phase 4 Explosions - With Speed-Up', 'Chop'],
+    ['Bork', bork, undefined, 'Chop'],
+    ['Bork', bork, 'Stunned', 'Chop'],
+  ];
+  const dps: number[] = [];
+  for (const [label, mon, phase, style] of cases) {
+    const m = prepareMonster(mon, {}, phase);
+    const p = buildPlayer({
+      name: label, gear: torva, styleName: style, prayers: [Prayer.PIETY], potions: [Potion.SUPER_COMBAT],
+    }, m);
+    const r = calculate(p, m);
+    dps.push(r.dps);
+    console.log(`  ${`${label} · ${m.inputs.phase}`.padEnd(52)} max ${String(r.maxHit).padStart(3)}  acc ${(r.accuracy * 100).toFixed(1).padStart(5)}%  dps ${r.dps.toFixed(2).padStart(6)}`);
+  }
+  if (prepareMonster(p3).inputs.phase !== 'Phase 3') throw new Error('Ocellus P3 should default to Phase 3');
+  if (prepareMonster(p3, {}, 'Not a phase').inputs.phase !== 'Phase 3') throw new Error('an unknown phase should fall back to the first');
+  if (dps[1] === dps[0]) throw new Error('Ocellus Phase 4 explosions changed nothing');
+  if (!(dps[3] > dps[2])) throw new Error('stunned Bork should take more melee DPS');
 }
 
 // The shape check for downloaded wiki data must accept the engine's own data (else every download would be refused).
