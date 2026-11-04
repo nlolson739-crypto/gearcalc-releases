@@ -40,6 +40,10 @@ button { cursor: pointer; }
 .topbar nav { display: flex; flex-wrap: wrap; gap: 4px; }
 .topbar nav a { padding: 10px 14px; border-radius: 8px; color: var(--soft); text-decoration: none; }
 .topbar nav a.on { background: var(--line); color: var(--text-strong); font-weight: 600; }
+.topbar nav a { display: inline-flex; align-items: center; gap: 6px; }
+.tab-badge { min-width: 34px; padding: 1px 6px; border-radius: 999px; background: #2f3540; color: var(--gold); font: 600 11px/1.5 var(--mono); text-align: center; }
+.tab-badge.done { background: var(--teal-bg); color: var(--teal-ink); font-family: var(--sans); }
+.page[hidden] { display: none; }
 .data-status { margin-left: auto; display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
 .data-status-text { display: flex; align-items: center; gap: 10px; cursor: default; white-space: nowrap; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); flex: none; }

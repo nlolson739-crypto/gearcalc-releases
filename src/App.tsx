@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppState } from './state';
 import DpsScreen from './screens/DpsScreen';
 import DefenceScreen from './screens/DefenceScreen';
@@ -28,6 +28,20 @@ export default function App() {
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);
   }, []);
+  // The best-setup search keeps running on other tabs; its tab shows how far it is, then a mark when it's done.
+  const [searchProgress, setSearchProgress] = useState<number | null>(null);
+  const [searchDone, setSearchDone] = useState(false);
+  const wasSearching = useRef(false);
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+  useEffect(() => {
+    if (searchProgress !== null) wasSearching.current = true;
+    else if (wasSearching.current) {
+      wasSearching.current = false;
+      if (screenRef.current !== 'best') setSearchDone(true);
+    }
+  }, [searchProgress]);
+  useEffect(() => { if (screen === 'best') setSearchDone(false); }, [screen]);
 
   return (
     <div className="app">
@@ -38,13 +52,22 @@ export default function App() {
         </div>
         <nav aria-label="Main">
           {SCREENS.map((s) => (
-            <a key={s.id} href={`#${s.id}`} className={s.id === screen ? 'on' : ''} aria-current={s.id === screen ? 'page' : undefined}>{s.label}</a>
+            <a key={s.id} href={`#${s.id}`} className={s.id === screen ? 'on' : ''} aria-current={s.id === screen ? 'page' : undefined}>
+              {s.label}
+              {s.id === 'best' && searchProgress !== null && (
+                <span className="tab-badge" title="Searching for the best setups">{Math.round(searchProgress * 100)}%</span>
+              )}
+              {s.id === 'best' && searchProgress === null && searchDone && (
+                <span className="tab-badge done" title="The search has finished">Done</span>
+              )}
+            </a>
           ))}
         </nav>
         <WikiDataBadge />
       </header>
       {screen === 'dps' && <DpsScreen state={state} setState={setState} />}
-      {screen === 'best' && <BestScreen state={state} setState={setState} />}
+      {/* always mounted, so a running search isn't lost when another tab is opened */}
+      <BestScreen state={state} setState={setState} hidden={screen !== 'best'} onProgress={setSearchProgress} />
       {screen === 'defence' && <DefenceScreen state={state} setState={setState} />}
       {screen === 'freeze' && <FreezeScreen />}
       <UpdatePrompt />

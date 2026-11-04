@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   allSpells, calculate, defenceFloor, EquipmentCategory, equipment, findItem, NO_REDUCTIONS, scaledMonster, SLOTS, stylesFor,
   type DefenceReductions, type EquipmentPiece, type PlayerCombatStyle, type Slot,
@@ -18,7 +18,14 @@ import { isModeOnlyItem } from '~/rules/wiki';
 import BankPicker from '~/ui/BankPicker';
 import ReductionControls from '~/ui/ReductionControls';
 
-type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
+type Props = {
+  state: AppState,
+  setState: (f: (s: AppState) => AppState) => void,
+  /** true while another tab is shown: the screen stays mounted so a running search carries on */
+  hidden?: boolean,
+  /** the search's progress (0–1), or null when no search is running, for the tab's progress badge */
+  onProgress?: (p: number | null) => void,
+};
 type Family = 'melee' | 'ranged' | 'magic';
 type Goal = 'dps' | 'ttk' | 'spec';
 type AttackType = 'stab' | 'slash' | 'crush' | 'ranged' | 'magic';
@@ -108,10 +115,13 @@ interface Found {
   others: { name: string, score: number }[];
 }
 
-export default function BestScreen({ state, setState }: Props) {
+export default function BestScreen({
+  state, setState, hidden = false, onProgress,
+}: Props) {
   const [families, setFamilies] = useState<Family[]>(['melee', 'ranged', 'magic']);
   const [goal, setGoal] = useState<Goal>('dps');
   const [progress, setProgress] = useState<number | null>(null);
+  useEffect(() => { onProgress?.(progress); }, [progress, onProgress]);
   const [status, setStatus] = useState('');
   const [found, setFound] = useState<Found[]>([]);
   const [checked, setChecked] = useState(0);
@@ -297,7 +307,7 @@ export default function BestScreen({ state, setState }: Props) {
   const toggleFamily = (f: Family) => setFamilies((l) => (l.includes(f) ? (l.length > 1 ? l.filter((x) => x !== f) : l) : [...l, f]));
 
   return (
-    <main className="page">
+    <main className="page" hidden={hidden}>
       <aside className="side" aria-label="Search options">
         <Panel title="Find the best setup">
           <MonsterPicker value={state.target} onChange={(k) => setState((s) => ({ ...s, target: k }))} extra={EXTRA_MONSTERS} />
