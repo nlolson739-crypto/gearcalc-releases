@@ -5,7 +5,7 @@ import DefenceScreen from './screens/DefenceScreen';
 import FreezeScreen from './screens/FreezeScreen';
 import BestScreen from './screens/BestScreen';
 import UpdatePrompt from './ui/UpdatePrompt';
-import vendorLock from '../vendor.lock?raw';
+import WikiDataBadge from './ui/WikiDataBadge';
 
 const SCREENS = [
   { id: 'dps', label: 'DPS' },
@@ -41,10 +41,7 @@ export default function App() {
             <a key={s.id} href={`#${s.id}`} className={s.id === screen ? 'on' : ''} aria-current={s.id === screen ? 'page' : undefined}>{s.label}</a>
           ))}
         </nav>
-        <div className="data-status" title={`Wiki DPS engine and data at commit ${vendorLock.trim()}`}>
-          <span className="dot" />
-          <span>OSRS Wiki engine {vendorLock.trim().slice(0, 7)}</span>
-        </div>
+        <WikiDataBadge />
       </header>
       {screen === 'dps' && <DpsScreen state={state} setState={setState} />}
       {screen === 'best' && <BestScreen state={state} setState={setState} />}

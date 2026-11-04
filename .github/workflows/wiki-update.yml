@@ -1,0 +1,150 @@
+# Once a day: is there a newer OSRS Wiki DPS calculator (weirdgloop/osrs-dps-calc)? If so, update GearCalc to it,
+# type-check, run the sanity checks, build the app and prepare a DRAFT release for the owner to approve.
+# Nothing reaches players until the draft is published on GitHub; finish-release.yml then completes the release
+# (patch upload, previous release hidden, the update merged into main).
+#
+# Monster/gear data needs none of this: the app downloads it from the wiki itself (app/wikidata.py). This is for
+# changes to the calculator's code, such as new boss mechanics.
+name: Wiki engine update
+
+on:
+  schedule:
+    - cron: '23 9 * * *' # every day, 09:23 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: wiki-update
+
+jobs:
+  update:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Look for a newer wiki calculator
+        id: look
+        run: |
+          cd vendor/osrs-dps-calc
+          git fetch --quiet --unshallow origin 2>/dev/null || git fetch --quiet origin
+          new=$(git rev-parse origin/main)
+          cd ../..
+          cur=$(tr -d '[:space:]' < vendor.lock)
+          echo "current $cur, wiki $new"
+          if [ "$new" = "$cur" ]; then
+            echo "GearCalc already uses the latest wiki calculator."
+            echo "build=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Already prepared? (a draft whose notes name this commit)
+          if gh api "repos/$REPO/releases?per_page=30" --jq '.[] | select(.draft) | .body' | grep -q "$new"; then
+            echo "A draft for $new is already waiting for approval."
+            echo "build=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          prev=$(gh release view --repo "$REPO" --json tagName --jq .tagName | sed 's/^v//')
+          ver=$(python -c "from decimal import Decimal as D; print(D('$prev') + D('0.01'))")
+          {
+            echo "build=yes"; echo "cur=$cur"; echo "new=$new"; echo "prev=$prev"; echo "ver=$ver"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update to it
+        if: steps.look.outputs.build == 'yes'
+        run: |
+          git -C vendor/osrs-dps-calc checkout --quiet ${{ steps.look.outputs.new }}
+          echo "${{ steps.look.outputs.new }}" > vendor.lock
+          echo "${{ steps.look.outputs.ver }}" > VERSION
+          git -C vendor/osrs-dps-calc log --format='- %s (%h)' ${{ steps.look.outputs.cur }}..${{ steps.look.outputs.new }} > "$RUNNER_TEMP/changes.md"
+          cat "$RUNNER_TEMP/changes.md"
+
+      - uses: denoland/setup-deno@v2
+        if: steps.look.outputs.build == 'yes'
+        with:
+          deno-version: v2.x
+
+      - uses: actions/setup-python@v5
+        if: steps.look.outputs.build == 'yes'
+        with:
+          python-version: '3.13'
+
+      - name: Install
+        if: steps.look.outputs.build == 'yes'
+        run: |
+          deno install
+          python -m venv app/.venv
+          app/.venv/Scripts/python -m pip install --quiet -r app/requirements.txt
+
+      - name: Type check (GearCalc's own code)
+        if: steps.look.outputs.build == 'yes'
+        run: |
+          # The wiki engine's own files have type errors GearCalc doesn't build; only GearCalc's must be clean.
+          deno run -A npm:typescript@5.6.3/tsc --noEmit -p . > "$RUNNER_TEMP/tsc.txt" 2>&1 || true
+          if grep -v '^vendor' "$RUNNER_TEMP/tsc.txt" | grep -q 'error TS'; then
+            grep -v '^vendor' "$RUNNER_TEMP/tsc.txt"; exit 1
+          fi
+
+      - name: Sanity checks
+        if: steps.look.outputs.build == 'yes'
+        run: deno task check
+
+      - name: Build the app, patch and source zip
+        if: steps.look.outputs.build == 'yes'
+        run: |
+          prev=${{ steps.look.outputs.prev }}; ver=${{ steps.look.outputs.ver }}
+          ./build-app.sh
+          mkdir -p release build/upload
+          gh release download "v$prev" --repo "$REPO" --pattern "GearCalc-v$prev.zip" --dir release
+          mv "release/GearCalc-v$prev.zip" "release/GearCalc v$prev.zip"
+          cp "release/GearCalc v$ver.zip" "build/upload/GearCalc-v$ver.zip"
+          app/.venv/Scripts/python tools/make_patch.py "release/GearCalc v$prev.zip" "release/GearCalc v$ver.zip" "$prev" "$ver" build/upload
+          app/.venv/Scripts/python tools/make_source_zip.py "$ver" build/upload
+          ls -la build/upload
+
+      - name: Prepare the draft release
+        if: steps.look.outputs.build == 'yes'
+        run: |
+          prev=${{ steps.look.outputs.prev }}; ver=${{ steps.look.outputs.ver }}; new=${{ steps.look.outputs.new }}
+          branch="wiki-update/v$ver"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add vendor/osrs-dps-calc vendor.lock VERSION
+          git commit --quiet -m "v$ver: update to the latest OSRS Wiki calculator (${new:0:7})"
+          git push --quiet origin "$branch"
+          {
+            echo "Updated to the latest OSRS Wiki DPS calculator ($new)."
+            echo
+            echo "Changes from the wiki:"
+            cat "$RUNNER_TEMP/changes.md"
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "v$ver" --repo "$REPO" --draft --target "$branch" --title "GearCalc v$ver" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            "build/upload/GearCalc-v$ver.zip" "build/upload/GearCalc-v$ver-source.zip" "build/upload/patch-v$prev-to-v$ver.zip"
+          url=$(gh release view "v$ver" --repo "$REPO" --json url --jq .url)
+          {
+            echo "GearCalc v$ver is built and checked, and waiting as a draft release: $url"
+            echo
+            echo "To send it to players, open the draft and click **Publish release**. The rest happens on its own."
+            echo "To skip it, delete the draft (and the \`$branch\` branch)."
+            echo
+            cat "$RUNNER_TEMP/notes.md"
+          } > "$RUNNER_TEMP/issue.md"
+          gh issue create --repo "$REPO" --title "GearCalc v$ver is ready to publish (wiki calculator update)" --body-file "$RUNNER_TEMP/issue.md"
+
+      - name: Report a failed update
+        if: failure() && steps.look.outputs.build == 'yes'
+        run: |
+          title="Wiki calculator update ${{ steps.look.outputs.new }} needs a look"
+          gh issue list --repo "$REPO" --state open --search "$title in:title" --json number --jq '.[0].number' | grep -q . && exit 0
+          gh issue create --repo "$REPO" --title "${title:0:80}" \
+            --body "The daily update to the newest OSRS Wiki calculator failed its checks or build, so nothing was released. Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

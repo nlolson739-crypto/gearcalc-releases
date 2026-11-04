@@ -65,11 +65,9 @@ export default function FreezeScreen() {
     return calculate(p, monster).accuracy;
   };
 
-  // The wiki gives a threshold with Augury and one with no prayer. Any other magic prayer (or Void) only adds accuracy,
-  // so the no-prayer threshold still holds with it; the Augury one doesn't. The wiki doesn't say what Magic level the
-  // values assume, so they're only applied at 99 Magic.
+  // The wiki states one threshold. It doesn't say what Magic level it assumes, so it's only applied at 99 Magic.
   const thresholdApplies = !!threshold && magicLevel >= 99;
-  const thresholdFor = threshold && thresholdApplies ? (prayer === Prayer.AUGURY ? threshold.withAugury : threshold.withoutAugury) : null;
+  const thresholdFor = threshold && thresholdApplies ? threshold.bonus : null;
   const ruled = () => thresholdFor !== null && bonus >= thresholdFor;
   const bindChance = (s: FreezeSpell) => (mark ? s.markBindChance : s.bindChance);
   const ticks = (s: FreezeSpell) => {
@@ -163,10 +161,7 @@ export default function FreezeScreen() {
             ))}
           </div>
           {threshold && !thresholdApplies && (
-            <div className="tiny muted">The wiki's freeze threshold for this target (+{threshold.withAugury} with Augury, +{threshold.withoutAugury} without) doesn't say what Magic level it assumes, so it's only used at 99 Magic. Below that the wiki engine's formula is shown.</div>
-          )}
-          {thresholdApplies && threshold && prayer !== null && prayer !== Prayer.AUGURY && (
-            <div className="tiny muted">The wiki gives a threshold with Augury (+{threshold.withAugury}) and with no prayer (+{threshold.withoutAugury}). {prayerName} only adds accuracy, so the no-prayer one is used.</div>
+            <div className="tiny muted">The wiki's freeze threshold for this target (+{threshold.bonus}) doesn't say what Magic level it assumes, so it's only used at 99 Magic. Below that the wiki engine's formula is shown.</div>
           )}
         </Panel>
 
@@ -202,11 +197,11 @@ export default function FreezeScreen() {
                 {r.kind === 'freeze-threshold' && (thresholdFor !== null ? (
                   <div className="row mono small">
                     <span style={{ color: bonus >= thresholdFor ? 'var(--teal)' : 'var(--gold)' }}>
-                      {prayerName} (+{thresholdFor}): {bonus >= thresholdFor ? 'met' : `needs +${thresholdFor - bonus} more`}
+                      Threshold (+{thresholdFor}): {bonus >= thresholdFor ? 'met' : `needs +${thresholdFor - bonus} more`}
                     </span>
                   </div>
                 ) : (
-                  <div className="tiny muted">Not used at {magicLevel} Magic: the wiki doesn't say what Magic level these values assume, so GearCalc uses them at 99 only.</div>
+                  <div className="tiny muted">Not used at {magicLevel} Magic: the wiki doesn't say what Magic level this value assumes, so GearCalc uses them at 99 only.</div>
                 ))}
                 <div className="tiny muted">Source: <a href={wikiUrl(r.source.page)} target="_blank" rel="noreferrer">OSRS Wiki · {r.source.page}</a> (revision {r.source.revision})</div>
               </div>

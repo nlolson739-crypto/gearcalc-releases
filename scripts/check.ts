@@ -44,3 +44,20 @@ for (const [n, v] of bosses) {
   const d2 = scaledMonster(prepareMonster(b, { elderMaul: 2 })).skills.def;
   console.log(`  ${(n + ' ' + v).padEnd(26)} ${b.skills.def} -> ${d1} -> ${d2}  (floor ${defenceFloor(prepareMonster(b))})`);
 }
+
+// The shape check for downloaded wiki data must accept the engine's own data (else every download would be refused).
+{
+  const { checkFile } = await import('~/data/wikiData');
+  const files = {
+    monsters: (await import('../vendor/osrs-dps-calc/cdn/json/monsters.json')).default,
+    equipment: (await import('../vendor/osrs-dps-calc/cdn/json/equipment.json')).default,
+    spells: (await import('../vendor/osrs-dps-calc/cdn/json/spells.json')).default,
+  };
+  console.log('\nWiki data shape check (built-in copies):');
+  for (const [name, data] of Object.entries(files)) {
+    const ok = checkFile(name as 'monsters', data);
+    if (!ok) throw new Error(`${name}.json fails the shape check`);
+    console.log(`  ${name.padEnd(10)} ${ok.entries.length} usable, ${ok.skipped} skipped`);
+  }
+  if (checkFile('equipment', [{ id: 1, name: 'x' }])) throw new Error('shape check accepted a broken file');
+}

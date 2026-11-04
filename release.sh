@@ -14,6 +14,12 @@ PREV="$1"; NOTES="$2"
 VER="$(tr -d '[:space:]' < VERSION)"
 PY=app/.venv/Scripts/python
 
+# The GitHub wiki-update check may have merged a release into main on GitHub; build on top of it, never over it.
+git fetch --quiet origin main
+if ! git merge-base --is-ancestor origin/main HEAD; then
+  echo "GitHub's main has commits this copy doesn't (probably a published wiki update). Run: git pull origin main"; exit 1
+fi
+
 ./build-app.sh
 NEW_ZIP="release/GearCalc v$VER.zip"
 PREV_ZIP="release/GearCalc v$PREV.zip"
@@ -24,6 +30,11 @@ cp "$NEW_ZIP" "$UP/GearCalc-v$VER.zip"   # no spaces: GitHub turns them into dot
 
 printf '%s\n' "$NOTES" > "$UP/notes.md"
 git push --quiet origin main
+# A draft of the same version prepared by the GitHub wiki-update check is replaced by this release.
+if [ "$("$GH" release view "v$VER" --repo "$REPO" --json isDraft --jq .isDraft 2>/dev/null)" = "true" ]; then
+  "$GH" release delete "v$VER" --repo "$REPO" --yes
+  git push --quiet origin --delete "wiki-update/v$VER" 2>/dev/null || true
+fi
 "$GH" release create "v$VER" "$UP/GearCalc-v$VER.zip" "$UP/GearCalc-v$VER-source.zip" --repo "$REPO" --title "GearCalc v$VER" --notes-file "$UP/notes.md"
 "$GH" release view updates --repo "$REPO" >/dev/null 2>&1 \
   || "$GH" release create updates --repo "$REPO" --prerelease --title "Patch updates" --notes "Small update files used by GearCalc's updater."

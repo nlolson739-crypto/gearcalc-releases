@@ -7,3 +7,4 @@ release/
 app/.venv/
 app/gearcalc.ico
 app/gearcalc.png
+__pycache__/

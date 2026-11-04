@@ -22,4 +22,8 @@ SOURCES
 All calculations use the OSRS Wiki's own DPS calculator engine and data. Extra rules (thralls, freeze spells,
 Xarth corpse) come from OSRS Wiki pages and show their source.
 
+Monster and gear stats update from the wiki on their own, once a day. The top-right label shows the date of the
+data in use ("Wiki data from ..."); hover it for details. When newer data arrives, click "New wiki data - Reload".
+Changes to the wiki's calculator itself arrive as a normal GearCalc update.
+
 Your setups are saved automatically in %APPDATA%\GearCalc.

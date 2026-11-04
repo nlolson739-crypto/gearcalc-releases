@@ -128,6 +128,7 @@ export function buildPlayer(input: SetupInput, monster: Monster): Player {
   const styles = stylesFor(eq.weapon);
   const style = styles.find((x) => x.name === input.styleName) ?? styles[0];
   const player: Player = {
+    uuid: input.name, // the engine's loadout id; its sums never read it
     name: input.name,
     style,
     skills,

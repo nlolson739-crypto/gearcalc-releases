@@ -10,7 +10,18 @@ unzip it anywhere and run `GearCalc.exe` (keep the `_internal` folder next to it
 version is out it asks first, then downloads only the files that changed.
 
 Windows 10/11 (it uses the Edge WebView2 component that ships with Windows). Internet is needed for item and
-monster pictures.
+monster pictures and for fresh wiki data.
+
+## Staying up to date with the wiki
+
+- **Monster, gear and spell stats** update on their own. Once a day GearCalc asks the wiki's file server
+  (tools.runescape.wiki) for the same data files the wiki's own DPS calculator uses. If nothing changed, the server only
+  answers "not modified"; new files are checked before use, and the copy built into the app is the fallback. The
+  top-right label shows the date of the data in use ("Wiki data from …"), and offers a reload when newer data arrives.
+  These are three plain file requests a day, not wiki API calls, sent with a User-Agent that names GearCalc.
+- **Calculator changes** (new boss mechanics and fixes in the wiki's engine) need a new GearCalc version. A daily
+  GitHub check (`.github/workflows/wiki-update.yml`) updates to the newest engine, type-checks, tests and builds it, and
+  prepares a draft release; publishing the draft (`finish-release.yml` does the rest) sends it to the app's updater.
 
 ## What it does
 
@@ -19,7 +30,8 @@ monster pictures.
 - **Defence reduction:** elder maul, dragon warhammer, Arclight, Emberlight, Ralos, Bandos godsword, Seercull, Eye of Ayak,
   Vulnerability and Accursed sceptre, with each boss's drain floor. Raid presets for The Fractured Archive, Chambers of
   Xeric, Theatre of Blood and Tombs of Amascut.
-- **Freeze check:** every freeze spell, with and without Augury and the Salve amulet (ei).
+- **Freeze check:** every freeze spell, with your prayer, Magic level, Void set and magic attack bonus, with and
+  without the Salve amulet (ei).
 - **Best setup:** finds the best build for each style (melee stab / slash / crush, ranged, magic) and ranks them, by
   highest DPS, fastest kill or best defence-drain spec. It searches all gear, or only the gear in a bank imported from
   RuneLite's Bank Memory plugin.
@@ -52,4 +64,5 @@ deno task dev          # web version at http://localhost:5178
 ```
 
 `deno task update-data` pulls the latest wiki engine and data, and flags rules whose wiki pages have changed since
-they were read.
+they were read. Releases: bump `VERSION`, then `./release.sh PREV "notes"` (it stops if GitHub's main has a published
+wiki update this copy lacks: `git pull origin main` first).

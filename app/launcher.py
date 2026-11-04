@@ -11,6 +11,7 @@ import bottle
 import webview
 
 import updater
+from wikidata import WikiData
 
 APP_NAME = 'GearCalc'
 # Saved setups live in the page's local storage, which is tied to the address, so the port must stay the same.
@@ -37,8 +38,11 @@ def version() -> str:
 _static_file = bottle.static_file
 
 
-def _static_file_no_cache(*args, **kwargs):
-    r = _static_file(*args, **kwargs)
+def _static_file_no_cache(filename, root, *args, **kwargs):
+    # ./wikidata/*.json is the wiki data downloaded into %APPDATA% (see wikidata.py), not part of the app folder
+    if filename.replace('\\', '/').startswith('wikidata/'):
+        root = DATA_DIR
+    r = _static_file(filename, root, *args, **kwargs)
     r.set_header('Cache-Control', 'no-cache')
     return r
 
@@ -70,6 +74,11 @@ def clear_stale_cache(storage: str) -> None:
     except OSError:
         pass
     logging.info('cleared web cache for v%s', version())
+
+
+def user_agent() -> str:
+    # The wiki asks automated tools to say who they are; no personal details.
+    return f'GearCalc/{version()} (personal OSRS gear calculator; +https://github.com/nlolson739-crypto/gearcalc-releases)'
 
 
 def read_clipboard_text() -> str | None:
@@ -133,6 +142,14 @@ class Api:
         """The clipboard's text, for the bank import's Paste button. The page can't read it itself: WebView2 asks for
         permission first, and pywebview has no handler for that request, so navigator.clipboard.readText fails."""
         return read_clipboard_text()
+
+    def refresh_wiki_data(self):
+        """Fetches newer monster/gear/spell data from the wiki, at most once a day. The page reloads to use it."""
+        try:
+            return WikiData(DATA_DIR, user_agent(), logging.info).refresh()
+        except Exception as e:
+            logging.exception('wiki data refresh failed')
+            return {'checked': None, 'changed': [], 'error': str(e)}
 
     def check_update(self):
         """The newer release, or None. Only the built app updates itself."""
