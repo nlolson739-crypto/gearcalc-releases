@@ -269,6 +269,24 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .bank-list-main { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .bank-list-main input { flex: 1; min-height: 36px; }
 input[aria-invalid='true'] { border-color: var(--loss); }
+/* bank item list (Best setup): switch the bank's items on and off, add gear it doesn't hold */
+.bank-items { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bank-items-toggle { display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; min-height: 40px; padding: 4px 10px; text-align: left; }
+.bank-items-toggle > span:first-child { font-weight: 600; }
+.bank-items-toggle .chev { margin-left: auto; color: var(--muted); }
+.bank-items-toggle.open { border-color: var(--gold); }
+.bank-items-panel { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.bank-item-list { display: flex; flex-direction: column; gap: 1px; max-height: 300px; overflow-y: auto; min-width: 0; }
+.bank-item-list.short { max-height: 160px; }
+.bank-item { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 2px 6px; border-radius: 6px; min-width: 0; cursor: pointer; }
+.bank-item:hover { background: var(--line); }
+.bank-item input[type='checkbox'] { width: 16px; height: 16px; flex: none; margin: 0; accent-color: var(--gold); cursor: pointer; }
+.bank-item img { width: 28px; height: 26px; flex: none; object-fit: contain; image-rendering: pixelated; }
+.bank-item > span { flex: 1; min-width: 0; font-size: 13px; overflow-wrap: anywhere; line-height: 1.25; }
+.bank-item.off > span { color: var(--muted); text-decoration: line-through; }
+.bank-item.off img { opacity: 0.4; }
+.bank-item .btn.small { min-height: 28px; padding: 0 8px; flex: none; }
+.bank-item-group { margin-top: 4px; padding: 0 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); }
 
 /* freeze check */
 .number-field { gap: 12px; }

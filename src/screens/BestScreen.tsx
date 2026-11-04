@@ -13,7 +13,7 @@ import {
 import {
   fmtTime, itemImage, MonsterPicker, Panel, PhasePicker, Segmented,
 } from '~/ui/common';
-import { ownedChecker } from '~/bank';
+import { usableChecker } from '~/bank';
 import { isModeOnlyItem } from '~/rules/wiki';
 import BankPicker from '~/ui/BankPicker';
 import ReductionControls from '~/ui/ReductionControls';
@@ -124,7 +124,8 @@ export default function BestScreen({ state, setState }: Props) {
   const cancel = useRef(false);
 
   const monster = targetMonster(state);
-  const inputsKey = JSON.stringify([state.target, targetPhase(state), state.reductions, state.buffs, state.activeBank, families, goal]);
+  const activeBank = state.banks.find((b) => b.id === state.activeBank);
+  const inputsKey = JSON.stringify([state.target, targetPhase(state), state.reductions, state.buffs, state.activeBank, activeBank?.excluded, activeBank?.added, families, goal]);
   const setR = (patch: Partial<DefenceReductions>) => setState((s) => ({ ...s, reductions: { ...s.reductions, ...patch } }));
   const base = baseMonster(state.target);
   const defFresh = scaledMonster(targetMonster(state, NO_REDUCTIONS)).skills.def;
@@ -159,7 +160,8 @@ export default function BestScreen({ state, setState }: Props) {
     const spec = goal === 'spec';
     // Limit the search to one imported bank, or search every item.
     const bank = state.banks.find((b) => b.id === state.activeBank);
-    const owned = bank ? ownedChecker(bank) : () => true;
+    // the bank's gear minus what's switched off in its item list, plus what's added there
+    const owned = bank ? usableChecker(bank) : () => true;
     const unique = allUnique.filter(owned);
     const missing: string[] = [];
     const cats: Category[] = spec
@@ -301,7 +303,7 @@ export default function BestScreen({ state, setState }: Props) {
           <MonsterPicker value={state.target} onChange={(k) => setState((s) => ({ ...s, target: k }))} extra={EXTRA_MONSTERS} />
           <PhasePicker monster={base} value={state.phases[state.target]} onChange={(p) => setState((s) => withPhase(s, p))} />
           <div className="small" style={{ color: 'var(--soft)' }}>Gear to use</div>
-          <BankPicker state={state} setState={setState} />
+          <BankPicker state={state} setState={setState} searchable={usable} />
           <div className="small" style={{ color: 'var(--soft)' }}>Rank by</div>
           <Segmented<Goal> label="Rank by" value={goal} onChange={(g) => { setGoal(g); setFound([]); setChecked(0); setNote(''); }} options={[{ value: 'dps', label: 'DPS' }, { value: 'ttk', label: 'Time to kill' }, { value: 'spec', label: 'Spec drain' }]} />
           {goal !== 'spec' && (

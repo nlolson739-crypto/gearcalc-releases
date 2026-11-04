@@ -1,8 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 import { equipmentCount, parseBankMemory, type Bank } from '~/bank';
+import type { EquipmentPiece } from '~/engine';
 import type { AppState } from '~/state';
+import BankItems from '~/ui/BankItems';
 
-type Props = { state: AppState, setState: (f: (s: AppState) => AppState) => void };
+type Props = {
+  state: AppState,
+  setState: (f: (s: AppState) => AppState) => void,
+  /** gear the search can use at all (no minigame or other-mode items): the only gear the item list shows */
+  searchable: (e: EquipmentPiece) => boolean,
+};
 
 const IMPORT = '__import';
 const MANAGE = '__manage';
@@ -23,7 +30,7 @@ const nameProblem = (banks: Bank[], name: string, exceptId?: string) => {
 };
 
 /** Chooses the gear the best-setup search may use: every item, or one of the banks imported from Bank Memory. */
-export default function BankPicker({ state, setState }: Props) {
+export default function BankPicker({ state, setState, searchable }: Props) {
   // null: closed; '' : a new bank; otherwise the id of the bank being re-imported
   const [importing, setImporting] = useState<string | null>(null);
   const [managing, setManaging] = useState(false);
@@ -63,6 +70,13 @@ export default function BankPicker({ state, setState }: Props) {
           </span>
         </div>
       )}
+      {active && !confirmRemove && (
+        <BankItems
+          bank={active}
+          searchable={searchable}
+          onChange={(patch) => setState((s) => ({ ...s, banks: s.banks.map((b) => (b.id === active.id ? { ...b, ...patch } : b)) }))}
+        />
+      )}
       {active && confirmRemove && (
         <div className="bank-row confirm" role="alert">
           <span className="small">Remove <b>{active.name}</b> from GearCalc?</span>
@@ -90,7 +104,8 @@ export default function BankPicker({ state, setState }: Props) {
           onSave={(bank) => {
             setState((s) => ({
               ...s,
-              banks: s.banks.some((b) => b.id === bank.id) ? s.banks.map((b) => (b.id === bank.id ? bank : b)) : [...s.banks, bank],
+              // updating a bank keeps the items switched off or added by hand
+              banks: s.banks.some((b) => b.id === bank.id) ? s.banks.map((b) => (b.id === bank.id ? { ...b, ...bank } : b)) : [...s.banks, bank],
               activeBank: bank.id,
             }));
             setImporting(null);

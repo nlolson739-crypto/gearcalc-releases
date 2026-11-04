@@ -7,6 +7,10 @@ export interface Bank {
   /** [item id, quantity] */
   items: [number, number][];
   imported: number;
+  /** item names (lower case) the best-setup search should leave out, though the bank holds them */
+  excluded?: string[];
+  /** item names (lower case) the search may use although the bank doesn't hold them */
+  added?: string[];
 }
 
 /**
@@ -43,6 +47,34 @@ export function ownedChecker(bank: Bank): (e: EquipmentPiece) => boolean {
   const ids = new Set(bank.items.map(([id]) => id));
   const names = new Set(equipment.filter((e) => ids.has(e.id)).map((e) => norm(e.name)));
   return (e) => ids.has(e.id) || names.has(norm(e.name));
+}
+
+/** The key items are switched on and off by: the name, so every version of an item goes together (as owning does). */
+export const itemKey = (e: { name: string }) => norm(e.name);
+
+const names = (v: unknown): Set<string> => new Set(Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+
+/** What the best-setup search may use with this bank: what it holds minus what's switched off, plus what's added. */
+export function usableChecker(bank: Bank): (e: EquipmentPiece) => boolean {
+  const owned = ownedChecker(bank);
+  const off = names(bank.excluded);
+  const extra = names(bank.added);
+  return (e) => {
+    const k = itemKey(e);
+    return extra.has(k) || (owned(e) && !off.has(k));
+  };
+}
+
+/** One piece per item name from a list, preferring the plain or charged version (for icons and the item list). */
+export function onePerName(items: EquipmentPiece[]): EquipmentPiece[] {
+  const best = new Map<string, EquipmentPiece>();
+  const rank = (e: EquipmentPiece) => (!e.version ? 0 : ['Charged', 'Normal', 'Active', 'Undamaged'].includes(e.version) ? 1 : 2);
+  for (const e of items) {
+    const k = itemKey(e);
+    const cur = best.get(k);
+    if (!cur || rank(e) < rank(cur)) best.set(k, e);
+  }
+  return [...best.values()];
 }
 
 /** How many distinct pieces of equipment (by name) a bank holds. */
