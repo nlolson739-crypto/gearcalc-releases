@@ -20,9 +20,16 @@ if ! git merge-base --is-ancestor origin/main HEAD; then
   echo "GitHub's main has commits this copy doesn't (probably a published wiki update). Run: git pull origin main"; exit 1
 fi
 
-./build-app.sh
 NEW_ZIP="release/GearCalc v$VER.zip"
 PREV_ZIP="release/GearCalc v$PREV.zip"
+# The GitHub wiki-update check publishes releases on its own, so the previous zip may only be on GitHub.
+if [ ! -f "$PREV_ZIP" ]; then
+  mkdir -p release
+  "$GH" release download "v$PREV" --repo "$REPO" --pattern "GearCalc-v$PREV.zip" --dir release
+  mv "release/GearCalc-v$PREV.zip" "$PREV_ZIP"
+fi
+
+./build-app.sh
 UP="build/upload"; rm -rf "$UP"; mkdir -p "$UP"
 cp "$NEW_ZIP" "$UP/GearCalc-v$VER.zip"   # no spaces: GitHub turns them into dots
 "$PY" tools/make_patch.py "$PREV_ZIP" "$NEW_ZIP" "$PREV" "$VER" "$UP"
