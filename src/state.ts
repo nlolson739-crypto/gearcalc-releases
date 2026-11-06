@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  findItem, findMonster, monsterKey, monsters, NO_REDUCTIONS, phaseFor, Potion, prepareMonster, Prayer,
+  findItem, findMonster, monsterKey, monsters, NO_REDUCTIONS, phaseFor, Potion, prepareMonster, Prayer, withDart,
   type DefenceReductions, type EquipmentPiece, type Monster, type Slot,
 } from '~/engine';
 import { XARTH_CORPSE } from '~/rules/wiki';
@@ -19,6 +19,8 @@ export interface Setup {
   /** spell name, used when the chosen style casts (autocast or manual cast) */
   spell?: string;
   specWeapon?: number;
+  /** the dart in a blowpipe (item id); missing = the strongest it can fire */
+  dart?: number;
 }
 
 export interface Buffs {
@@ -48,6 +50,8 @@ export interface AppState {
   banks: Bank[];
   /** the bank the best-setup search is limited to; null searches all gear */
   activeBank: string | null;
+  /** which of the one-time save changes in load() this save has had */
+  saveVersion?: number;
 }
 
 /**
@@ -85,7 +89,7 @@ export const DEFAULT_STATE: AppState = {
   phases: {},
   reductions: { ...NO_REDUCTIONS, elderMaul: 2 },
   buffs: {
-    prayers: [Prayer.PIETY, Prayer.RIGOUR, Prayer.AUGURY], potions: [Potion.SUPER_COMBAT], thrall: 3, onSlayerTask: false, markOfDarkness: false, charge: false,
+    prayers: [Prayer.PIETY, Prayer.RIGOUR, Prayer.AUGURY], potions: [Potion.SUPER_COMBAT, Potion.RANGING], thrall: 3, onSlayerTask: false, markOfDarkness: false, charge: false,
   },
   setups: [
     { id: 'a', name: 'Setup 1 · Torva', color: SETUP_COLORS[0], gear: ids(torva), style: 'Jab', specWeapon: findItem('Elder maul')?.id },
@@ -103,6 +107,7 @@ export const DEFAULT_STATE: AppState = {
   ],
   banks: [],
   activeBank: null,
+  saveVersion: 1,
 };
 
 const STORAGE_KEY = 'gearcalc-state-v1';
@@ -165,6 +170,13 @@ function load(): AppState {
         saved.buffs.prayers = saved.buffs.prayer === null || saved.buffs.prayer === undefined ? [] : [saved.buffs.prayer];
         delete saved.buffs.prayer;
       }
+      // Each potion only boosts its own skill, but the default used to be Super combat alone, so ranged setups were
+      // compared unboosted against boosted melee. Done once: taking the Ranging potion off afterwards stays off.
+      if (!saved.saveVersion && saved.buffs && Array.isArray(saved.buffs.potions)
+        && saved.buffs.potions.length === 1 && saved.buffs.potions[0] === Potion.SUPER_COMBAT) {
+        saved.buffs.potions = [Potion.SUPER_COMBAT, Potion.RANGING];
+      }
+      saved.saveVersion = DEFAULT_STATE.saveVersion;
       // the banks key wins: it's kept even when the setups are reset (saves before v0.34 only have them in here)
       Object.assign(saved, banks ?? toSavedBanks(saved) ?? { banks: [], activeBank: null });
       // phases were added in v0.33
@@ -253,6 +265,10 @@ export const targetMonster = (s: AppState, reductions: Partial<DefenceReductions
 /** Sets the phase for the current target. */
 export const withPhase = (s: AppState, phase: string): AppState => ({ ...s, phases: { ...s.phases, [s.target]: phase } });
 
-export const gearOf = (setup: Setup) => Object.fromEntries(
-  Object.entries(setup.gear).map(([slot, id]) => [slot, itemById(id)]),
-) as Partial<Record<Slot, EquipmentPiece | null>>;
+export const gearOf = (setup: Setup) => {
+  const gear = Object.fromEntries(
+    Object.entries(setup.gear).map(([slot, id]) => [slot, itemById(id)]),
+  ) as Partial<Record<Slot, EquipmentPiece | null>>;
+  if (gear.weapon) gear.weapon = withDart(gear.weapon, setup.dart);
+  return gear;
+};

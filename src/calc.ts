@@ -1,5 +1,5 @@
 import {
-  allSpells, buildPlayer, calculate, scaledMonster, type CalcResult, type DefenceReductions, type EquipmentPiece, type Monster,
+  allSpells, buildPlayer, calculate, scaledMonster, withDart, type CalcResult, type DefenceReductions, type EquipmentPiece, type Monster,
 } from '~/engine';
 import { THRALLS } from '~/rules/wiki';
 import {
@@ -17,7 +17,7 @@ export const thrallDps = (tier: Buffs['thrall']) => THRALLS.find((t) => t.tier =
 export function playerFor(setup: Setup, buffs: Buffs, monster: Monster, weaponOverride?: EquipmentPiece | null, styleOverride?: string) {
   const gear = gearOf(setup);
   if (weaponOverride !== undefined) {
-    gear.weapon = weaponOverride;
+    gear.weapon = withDart(weaponOverride, setup.dart);
     if (weaponOverride?.isTwoHanded) gear.shield = null;
   }
   return buildPlayer({

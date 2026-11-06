@@ -4,7 +4,7 @@ import { PotionMap } from '@/utils';
 import { PrayerMap } from '@/enums/Prayer';
 import { getCdnImage } from '@/utils';
 import {
-  allSpells, findItem, NO_REDUCTIONS, SLOTS, scaledMonster, stylesFor, type Slot,
+  dartsFor, allSpells, findItem, NO_REDUCTIONS, SLOTS, scaledMonster, stylesFor, type Slot,
 } from '~/engine';
 import { runSetup, runSpec } from '~/calc';
 import {
@@ -147,6 +147,11 @@ export default function DpsScreen({ state, setState }: Props) {
                         <small>{x.type ? x.type[0].toUpperCase() + x.type.slice(1) : 'None'} · {x.stance}</small>
                       </button>
                     ))}
+                    {dartsFor(gear.weapon).length > 0 && (
+                      <select className="raid-select spell-select" aria-label="Dart" value={gear.weapon?.itemVars?.blowpipeDartId} onChange={(e) => setSetup(s.id, (y) => ({ ...y, dart: Number(e.target.value) }))}>
+                        {dartsFor(gear.weapon).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                    )}
                     {style?.type === 'magic' && /cast/i.test(style.stance ?? '') && (
                       <select className="raid-select spell-select" aria-label="Spell" value={s.spell ?? ''} onChange={(e) => setSetup(s.id, (y) => ({ ...y, spell: e.target.value || undefined }))}>
                         <option value="">Choose a spell…</option>

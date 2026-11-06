@@ -1,7 +1,8 @@
 // Sanity checks for the engine wrapper. Run with: deno task check
 import {
-  buildPlayer, calculate, defenceFloor, findItem, findMonster, phasesFor, Potion, prepareMonster, Prayer, scaledMonster,
+  buildPlayer, calculate, dartsFor, defenceFloor, findItem, findMonster, phasesFor, Potion, prepareMonster, Prayer, scaledMonster, withDart,
 } from '~/engine';
+import { DEFAULT_STATE, gearOf } from '~/state';
 
 const need = <T>(x: T | undefined, what: string): T => {
   if (!x) throw new Error(`missing ${what}`);
@@ -70,6 +71,47 @@ Phases (Torva scythe, Piety, super combat; ${phasesFor(p3).length} Ocellus P3 ph
   if (prepareMonster(p3, {}, 'Not a phase').inputs.phase !== 'Phase 3') throw new Error('an unknown phase should fall back to the first');
   if (dps[1] === dps[0]) throw new Error('Ocellus Phase 4 explosions changed nothing');
   if (!(dps[3] > dps[2])) throw new Error('stunned Bork should take more melee DPS');
+}
+
+// Ocellus Phase 1 against the wiki's recommended equipment (The Fractured Archive/Strategies, Reduced Defence):
+// Obligator > Ascension crossbows > Twisted bow / Toxic blowpipe > Scythe of Vitur / Inquisitor's mace > Soulreaper axe.
+{
+  const m = prepareMonster(need(findMonster('Ocellus', 'Phase 1'), 'Ocellus P1'), { elderMaul: 2 });
+  const rng = {
+    head: item('Masori mask (f)'), body: item('Masori body (f)'), legs: item('Masori chaps (f)'), cape: item("Dizana's quiver"),
+    neck: item('Necklace of anguish'), hands: item('Zaryte vambraces'), feet: item('Pegasian boots'), ring: item('Venator ring'),
+  };
+  const melee = { ...inq, ring: item('Ultor ring') };
+  const pipe = need(findItem('Toxic blowpipe', 'Charged'), 'Toxic blowpipe');
+  const dps = (gear: object, style: string, ranged: boolean) => calculate(buildPlayer({
+    name: style, gear, styleName: style, prayers: [ranged ? Prayer.RIGOUR : Prayer.PIETY], potions: DEFAULT_STATE.buffs.potions,
+  }, m), m).dps;
+  const list: [string, number][] = [
+    ['Obligator', dps({ ...melee, weapon: need(findItem('Obligator', 'Charged'), 'Obligator') }, 'Thrust-Agg', false)],
+    ['Ascension crossbows', dps({ ...rng, weapon: item('Ascension crossbows'), ammo: item('Diamond ascension bolts (e)') }, 'Rapid', true)],
+    ['Twisted bow', dps({ ...rng, weapon: item('Twisted bow'), ammo: item('Dragon arrow') }, 'Rapid', true)],
+    ['Toxic blowpipe, strongest dart', dps({ ...rng, weapon: withDart(pipe) }, 'Rapid', true)],
+    ['Scythe of Vitur', dps({ ...torva }, 'Chop', false)],
+    ["Inquisitor's mace", dps({ ...melee, weapon: item("Inquisitor's mace"), shield: item('Avernic defender') }, 'Pummel', false)],
+  ];
+  console.log('\nOcellus P1, Defence 129, default potions (wiki order):');
+  for (const [n, v] of list) console.log(`  ${n.padEnd(32)} ${v.toFixed(2).padStart(6)}`);
+  const v = Object.fromEntries(list);
+  if (!(v.Obligator > v['Ascension crossbows'] && v['Ascension crossbows'] > v['Twisted bow'] && v['Twisted bow'] > v['Scythe of Vitur'])) {
+    throw new Error('Ocellus P1 order differs from the wiki');
+  }
+  if (Math.abs(v['Toxic blowpipe, strongest dart'] / v['Twisted bow'] - 1) > 0.05) throw new Error('blowpipe should be level with the twisted bow');
+
+  // Blowpipes: the dart counts, the chosen one is kept, and each blowpipe only fires what it allows.
+  const noDart = dps({ ...rng, weapon: pipe }, 'Rapid', true);
+  if (!(v['Toxic blowpipe, strongest dart'] > noDart)) throw new Error('a dart should add damage to a blowpipe');
+  const darts = dartsFor(pipe);
+  if (darts[0].name !== 'Dragon dart') throw new Error(`strongest dart is ${darts[0].name}`);
+  const low = darts[darts.length - 1];
+  if (gearOf({ id: 'x', name: 'x', color: '', gear: { weapon: pipe.id }, dart: low.id }).weapon?.itemVars?.blowpipeDartId !== low.id) throw new Error('chosen dart not kept');
+  if (gearOf({ id: 'x', name: 'x', color: '', gear: { weapon: pipe.id } }).weapon?.itemVars?.blowpipeDartId !== darts[0].id) throw new Error('blowpipe should default to its strongest dart');
+  if (dartsFor(need(findItem('Camphor blowpipe', 'Charged'), 'Camphor blowpipe')).some((d) => d.name === 'Dragon dart')) throw new Error('camphor blowpipe cannot fire dragon darts');
+  if (dartsFor(item('Twisted bow')).length || withDart(item('Twisted bow'))?.itemVars) throw new Error('only blowpipes take darts');
 }
 
 // The shape check for downloaded wiki data must accept the engine's own data (else every download would be refused).

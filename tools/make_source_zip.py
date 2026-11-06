@@ -11,7 +11,8 @@ import zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # The engine files GearCalc's build uses (calculation code, data and the images it bundles).
 ENGINE_PARTS = ('LICENSE', 'README', 'package.json', 'tsconfig.json', 'cdn/json/', 'src/lib/', 'src/types/',
-                'src/enums/', 'src/utils.ts', 'src/state.tsx', 'src/public/img/')
+                'src/enums/', 'src/utils.ts', 'src/state.tsx', 'src/public/img/',
+                'src/app/components/player/equipment/equipmentOptions.ts')
 
 
 def tracked(repo):

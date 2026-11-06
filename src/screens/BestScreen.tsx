@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  allSpells, calculate, defenceFloor, EquipmentCategory, equipment, findItem, NO_REDUCTIONS, scaledMonster, SLOTS, stylesFor,
+  allSpells, calculate, dartsFor, defenceFloor, EquipmentCategory, equipment, findItem, NO_REDUCTIONS, scaledMonster, SLOTS, stylesFor,
   type DefenceReductions, type EquipmentPiece, type PlayerCombatStyle, type Slot,
 } from '~/engine';
 import {
@@ -252,7 +252,13 @@ export default function BestScreen({
       // Pick the 25 weapons to search by real DPS in the starting gear, not by stats: a weapon's stats miss things like
       // the scythe's extra hits on large targets or a weapon's special effects.
       const withWeapon = (w: EquipmentPiece): Setup => ({
-        id: cat.id, name: cat.label, color: '', gear: { ...start, weapon: w.id, ammo: ammoFor(w)[0]?.id ?? start.ammo, ...(w.isTwoHanded ? { shield: undefined } : {}) },
+        id: cat.id,
+        name: cat.label,
+        color: '',
+        // A blowpipe gets the strongest dart the bank holds. A bank list doesn't show darts already loaded in a blowpipe,
+        // so with none listed it gets the strongest it can fire; the result names the dart either way.
+        dart: dartsFor(w).find(owned)?.id,
+        gear: { ...start, weapon: w.id, ammo: ammoFor(w)[0]?.id ?? start.ammo, ...(w.isTwoHanded ? { shield: undefined } : {}) },
       });
       const ranked: { w: EquipmentPiece, v: number }[] = [];
       for (let wi = 0; wi < candidates.length && !cancel.current; wi++) {
@@ -378,7 +384,7 @@ export default function BestScreen({
               <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span className="row" style={{ gap: 8 }}>
                   <span className="cat-badge">{f.category.label}</span>
-                  <span style={{ fontWeight: 600 }}>{g.weapon?.name ?? '—'} · {f.setup.style}{f.setup.spell ? ` · ${f.setup.spell}` : ''}</span>
+                  <span style={{ fontWeight: 600 }}>{g.weapon?.name ?? '—'}{g.weapon?.itemVars?.blowpipeDartName ? ` (${g.weapon.itemVars.blowpipeDartName})` : ''} · {f.setup.style}{f.setup.spell ? ` · ${f.setup.spell}` : ''}</span>
                 </span>
                 <div className="result-items">
                   {SLOTS.filter((s) => s !== 'weapon' && g[s]).map((s) => <span key={s} className="item-icon" title={g[s]!.name}><img src={itemImage(g[s])} alt={g[s]!.name} /></span>)}
@@ -406,7 +412,7 @@ export default function BestScreen({
                         setState((st) => ({
                           ...st,
                           setups: st.setups.map((x, xi) => (xi === si ? {
-                            ...x, gear: f.setup.gear, style: f.setup.style, spell: f.setup.spell, name: `${f.category.label} · ${g.weapon?.name ?? ''}`,
+                            ...x, gear: f.setup.gear, style: f.setup.style, spell: f.setup.spell, dart: f.setup.dart, name: `${f.category.label} · ${g.weapon?.name ?? ''}`,
                           } : x)),
                         }));
                         setUsed(`${f.category.id}:${s.id}`);

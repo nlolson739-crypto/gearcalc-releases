@@ -6,6 +6,7 @@ import { MONSTER_PHASES_BY_ID } from '@/lib/constants';
 import {
   availableEquipment, calculateAttackSpeed, calculateEquipmentBonusesFromGear,
 } from '@/lib/Equipment';
+import { EQUIPMENT_OPTIONS } from '@/app/components/player/equipment/equipmentOptions';
 import { getDefenceFloor } from '@/lib/scaling/DefenceReduction';
 import { scaleMonster } from '@/lib/MonsterScaling';
 import { getCombatStylesForCategory, PotionMap } from '@/utils';
@@ -120,6 +121,26 @@ const DEFAULT_BUFFS: Player['buffs'] = {
   fragmentOfEarth: false,
   fragmentOfFire: false,
 };
+
+// The darts the wiki calculator lets each blowpipe fire (it lists every blowpipe once per dart, up to the dart tier
+// that blowpipe allows). The engine reads the dart from the weapon's itemVars; without one a blowpipe has no dart strength.
+const dartsByBlowpipe = new Map<number, EquipmentPiece[]>();
+for (const { equipment: e } of EQUIPMENT_OPTIONS) {
+  const dart = e.itemVars?.blowpipeDartId === undefined ? undefined : availableEquipment.find((x) => x.id === e.itemVars?.blowpipeDartId);
+  if (dart) dartsByBlowpipe.set(e.id, [...(dartsByBlowpipe.get(e.id) ?? []), dart]);
+}
+for (const list of dartsByBlowpipe.values()) list.sort((a, b) => b.bonuses.ranged_str - a.bonuses.ranged_str);
+
+/** The darts a blowpipe can fire, strongest first; empty for every other weapon. */
+export const dartsFor = (weapon: { id: number } | null | undefined): EquipmentPiece[] => dartsByBlowpipe.get(weapon?.id ?? -1) ?? [];
+
+/** The weapon with its dart loaded: the given one if the blowpipe can fire it, else the strongest. Other weapons stay as they are. */
+export function withDart(weapon: EquipmentPiece | null | undefined, dartId?: number): EquipmentPiece | null | undefined {
+  const darts = dartsFor(weapon);
+  if (!weapon || !darts.length) return weapon;
+  const dart = darts.find((d) => d.id === dartId) ?? darts[0];
+  return { ...weapon, itemVars: { ...weapon.itemVars, blowpipeDartId: dart.id, blowpipeDartName: dart.name } };
+}
 
 export const stylesFor = (weapon: EquipmentPiece | null | undefined): PlayerCombatStyle[] => getCombatStylesForCategory(
   weapon?.category || EquipmentCategory.NONE,
