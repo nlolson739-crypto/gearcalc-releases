@@ -21,7 +21,7 @@ monster pictures and for fresh wiki data.
   These are three plain file requests a day, not wiki API calls, sent with a User-Agent that names GearCalc.
 - **Calculator changes** (new boss mechanics and fixes in the wiki's engine) need a new GearCalc version. A daily
   GitHub check (`.github/workflows/wiki-update.yml`) updates to the newest engine, type-checks, tests and builds it, and
-  prepares a draft release; publishing the draft (`finish-release.yml` does the rest) sends it to the app's updater.
+  publishes the release itself, which sends it to the app's updater. If a check fails, nothing is published and an issue is opened.
 
 ## What it does
 

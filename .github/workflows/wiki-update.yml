@@ -1,7 +1,7 @@
 # Once a day: is there a newer OSRS Wiki DPS calculator (weirdgloop/osrs-dps-calc)? If so, update GearCalc to it,
-# type-check, run the sanity checks, build the app and prepare a DRAFT release for the owner to approve.
-# Nothing reaches players until the draft is published on GitHub; finish-release.yml then completes the release
-# (patch upload, previous release hidden, the update merged into main).
+# type-check, run the sanity checks, build the app and publish the release, the same way release.sh does (update
+# merged into main, patch uploaded, previous release hidden). If a check or the build fails, nothing is published
+# and an issue is opened instead.
 #
 # Monster/gear data needs none of this: the app downloads it from the wiki itself (app/wikidata.py). This is for
 # changes to the calculator's code, such as new boss mechanics.
@@ -47,13 +47,13 @@ jobs:
             echo "GearCalc already uses the latest wiki calculator."
             echo "build=no" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          # Already prepared? (a draft whose notes name this commit)
-          if gh api "repos/$REPO/releases?per_page=30" --jq '.[] | select(.draft) | .body' | grep -q "$new"; then
-            echo "A draft for $new is already waiting for approval."
-            echo "build=no" >> "$GITHUB_OUTPUT"; exit 0
-          fi
           prev=$(gh release view --repo "$REPO" --json tagName --jq .tagName | sed 's/^v//')
           ver=$(python -c "from decimal import Decimal as D; print(D('$prev') + D('0.01'))")
+          # A draft of this version from when updates waited for approval would block its number.
+          if [ "$(gh release view "v$ver" --repo "$REPO" --json isDraft --jq .isDraft 2>/dev/null)" = "true" ]; then
+            gh release delete "v$ver" --repo "$REPO" --yes
+          fi
+          git push --quiet origin --delete "wiki-update/v$ver" 2>/dev/null || true
           {
             echo "build=yes"; echo "cur=$cur"; echo "new=$new"; echo "prev=$prev"; echo "ver=$ver"
           } >> "$GITHUB_OUTPUT"
@@ -110,36 +110,30 @@ jobs:
           app/.venv/Scripts/python tools/make_source_zip.py "$ver" build/upload
           ls -la build/upload
 
-      - name: Prepare the draft release
+      - name: Publish the release
         if: steps.look.outputs.build == 'yes'
         run: |
           prev=${{ steps.look.outputs.prev }}; ver=${{ steps.look.outputs.ver }}; new=${{ steps.look.outputs.new }}
-          branch="wiki-update/v$ver"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$branch"
           git add vendor/osrs-dps-calc vendor.lock VERSION
           git commit --quiet -m "v$ver: update to the latest OSRS Wiki calculator (${new:0:7})"
-          git push --quiet origin "$branch"
+          # Main first: if someone released while this ran, the push fails and nothing is published.
+          git push --quiet origin HEAD:main
           {
             echo "Updated to the latest OSRS Wiki DPS calculator ($new)."
             echo
             echo "Changes from the wiki:"
             cat "$RUNNER_TEMP/changes.md"
           } > "$RUNNER_TEMP/notes.md"
-          gh release create "v$ver" --repo "$REPO" --draft --target "$branch" --title "GearCalc v$ver" \
+          gh release create "v$ver" --repo "$REPO" --target main --title "GearCalc v$ver" \
             --notes-file "$RUNNER_TEMP/notes.md" \
-            "build/upload/GearCalc-v$ver.zip" "build/upload/GearCalc-v$ver-source.zip" "build/upload/patch-v$prev-to-v$ver.zip"
-          url=$(gh release view "v$ver" --repo "$REPO" --json url --jq .url)
-          {
-            echo "GearCalc v$ver is built and checked, and waiting as a draft release: $url"
-            echo
-            echo "To send it to players, open the draft and click **Publish release**. The rest happens on its own."
-            echo "To skip it, delete the draft (and the \`$branch\` branch)."
-            echo
-            cat "$RUNNER_TEMP/notes.md"
-          } > "$RUNNER_TEMP/issue.md"
-          gh issue create --repo "$REPO" --title "GearCalc v$ver is ready to publish (wiki calculator update)" --body-file "$RUNNER_TEMP/issue.md"
+            "build/upload/GearCalc-v$ver.zip" "build/upload/GearCalc-v$ver-source.zip"
+          gh release view updates --repo "$REPO" > /dev/null 2>&1 \
+            || gh release create updates --repo "$REPO" --prerelease --title "Patch updates" --notes "Small update files used by GearCalc's updater."
+          gh release upload updates "build/upload/patch-v$prev-to-v$ver.zip" --repo "$REPO" --clobber
+          gh release edit "v$prev" --repo "$REPO" --draft=true || true
+          gh api -X DELETE "repos/$REPO/git/refs/tags/v$prev" || true
 
       - name: Report a failed update
         if: failure() && steps.look.outputs.build == 'yes'
