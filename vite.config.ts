@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
+import { changelog } from './scripts/changelog';
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
@@ -75,6 +76,7 @@ export default defineConfig({
   define: {
     __BUILTIN_DATA_DATE__: JSON.stringify(builtInDataDate()),
     __ENGINE_DATE__: JSON.stringify(engineDate()),
+    __CHANGELOG__: JSON.stringify(changelog()),
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'development'),
   },
   server: {

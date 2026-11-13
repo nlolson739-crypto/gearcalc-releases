@@ -114,6 +114,22 @@ Phases (Torva scythe, Piety, super combat; ${phasesFor(p3).length} Ocellus P3 ph
   if (dartsFor(item('Twisted bow')).length || withDart(item('Twisted bow'))?.itemVars) throw new Error('only blowpipes take darts');
 }
 
+// What's new: the comparison finds a changed boss stat, a new item and a removed one, and nothing when nothing changed.
+{
+  const { diffData, isEmptyDiff } = await import('~/data/changes');
+  const monsters = (await import('../vendor/osrs-dps-calc/cdn/json/monsters.json')).default as { name: string, version: string, skills: { def: number } }[];
+  const equipment = (await import('../vendor/osrs-dps-calc/cdn/json/equipment.json')).default as { name: string }[];
+  if (!isEmptyDiff(diffData({ monsters, equipment }, { monsters, equipment }))) throw new Error('same data should show no changes');
+  const edited = monsters.map((m) => (m.name === 'Ocellus' && m.version === 'Phase 3' ? { ...m, skills: { ...m.skills, def: m.skills.def - 10 } } : m));
+  const d = diffData({ monsters, equipment }, { monsters: edited, equipment: [...equipment.slice(1), { ...equipment[1], id: -1, name: 'Test sword' }] });
+  const oc = d.changed.find((c) => c.name === 'Ocellus (Phase 3)');
+  if (!oc || oc.changes.length !== 1 || oc.changes[0].field !== 'Defence level') throw new Error(`Ocellus change not found: ${JSON.stringify(d.changed)}`);
+  if (!d.added.some((a) => a.name === 'Test sword')) throw new Error('new item not listed');
+  if (!d.removed.some((r) => r.name === equipment[0].name || r.name.startsWith(`${equipment[0].name} (`))) throw new Error('removed item not listed');
+  console.log(`
+What's new comparison: ${oc.name} ${oc.changes[0].field} ${oc.changes[0].from} -> ${oc.changes[0].to}`);
+}
+
 // The shape check for downloaded wiki data must accept the engine's own data (else every download would be refused).
 {
   const { checkFile } = await import('~/data/wikiData');

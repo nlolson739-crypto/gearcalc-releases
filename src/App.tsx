@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAppState } from './state';
+import { baseMonster, useAppState } from './state';
 import DpsScreen from './screens/DpsScreen';
 import DefenceScreen from './screens/DefenceScreen';
 import FreezeScreen from './screens/FreezeScreen';
 import BestScreen from './screens/BestScreen';
 import UpdatePrompt from './ui/UpdatePrompt';
 import WikiDataBadge from './ui/WikiDataBadge';
+import WhatsNew from './ui/WhatsNew';
 
 const SCREENS = [
   { id: 'dps', label: 'DPS' },
@@ -64,6 +65,7 @@ export default function App() {
           ))}
         </nav>
         <WikiDataBadge />
+        <WhatsNew target={baseMonster(state.target).name} />
       </header>
       {screen === 'dps' && <DpsScreen state={state} setState={setState} />}
       {/* always mounted, so a running search isn't lost when another tab is opened */}

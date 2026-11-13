@@ -1,9 +1,9 @@
 import {
-  allSpells, buildPlayer, calculate, scaledMonster, withDart, type CalcResult, type DefenceReductions, type EquipmentPiece, type Monster,
+  allSpells, buildPlayer, calculate, withDart, type CalcResult, type DefenceReductions, type EquipmentPiece, type Monster,
 } from '~/engine';
 import { THRALLS } from '~/rules/wiki';
 import {
-  gearOf, itemById, targetMonster, type AppState, type Buffs, type Setup,
+  gearOf, type Buffs, type Setup,
 } from '~/state';
 
 export interface SetupResult extends CalcResult {
@@ -65,29 +65,3 @@ const DRAIN_KEYS: Record<string, keyof DefenceReductions> = {
   'Seercull': 'seercull',
 };
 export const drainKeyFor = (e: EquipmentPiece | null | undefined) => (e ? DRAIN_KEYS[e.name] : undefined);
-
-export interface SpecResult {
-  weapon: EquipmentPiece;
-  accuracy: number;
-  maxHit: number;
-  /** Defence after one landed spec (BGS: after an average-damage hit) */
-  defenceAfter: number | null;
-}
-
-export function runSpec(setup: Setup, buffs: Buffs, monster: Monster, state: AppState): SpecResult | null {
-  const weapon = itemById(setup.specWeapon);
-  if (!weapon) return null;
-  const r = calculate(playerFor(setup, buffs, monster, weapon, ''), monster, true);
-  const key = drainKeyFor(weapon);
-  let defenceAfter: number | null = null;
-  if (key) {
-    const red = { ...state.reductions } as DefenceReductions;
-    if (key === 'bgs') red.bgs += Math.round(r.maxHit / 2);
-    else if (key === 'tonalztic') red.tonalztic += 2;
-    else (red[key] as number) += 1;
-    defenceAfter = scaledMonster(targetMonster(state, red)).skills.def;
-  }
-  return {
-    weapon, accuracy: r.accuracy, maxHit: r.maxHit, defenceAfter,
-  };
-}

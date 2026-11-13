@@ -18,7 +18,6 @@ export interface Setup {
   style?: string;
   /** spell name, used when the chosen style casts (autocast or manual cast) */
   spell?: string;
-  specWeapon?: number;
   /** the dart in a blowpipe (item id); missing = the strongest it can fire */
   dart?: number;
 }
@@ -92,8 +91,8 @@ export const DEFAULT_STATE: AppState = {
     prayers: [Prayer.PIETY, Prayer.RIGOUR, Prayer.AUGURY], potions: [Potion.SUPER_COMBAT, Potion.RANGING], thrall: 3, onSlayerTask: false, markOfDarkness: false, charge: false,
   },
   setups: [
-    { id: 'a', name: 'Setup 1 · Torva', color: SETUP_COLORS[0], gear: ids(torva), style: 'Jab', specWeapon: findItem('Elder maul')?.id },
-    { id: 'b', name: 'Setup 2 · Torva', color: SETUP_COLORS[1], gear: ids(torva), style: 'Chop', specWeapon: findItem('Bandos godsword')?.id },
+    { id: 'a', name: 'Setup 1 · Torva', color: SETUP_COLORS[0], gear: ids(torva), style: 'Jab' },
+    { id: 'b', name: 'Setup 2 · Torva', color: SETUP_COLORS[1], gear: ids(torva), style: 'Chop' },
     {
       id: 'c',
       name: 'Setup 3 · Inquisitor',
@@ -102,7 +101,6 @@ export const DEFAULT_STATE: AppState = {
         ...torva, head: "Inquisitor's great helm", body: "Inquisitor's hauberk", legs: "Inquisitor's plateskirt",
       }),
       style: 'Jab',
-      specWeapon: findItem('Elder maul')?.id,
     },
   ],
   banks: [],

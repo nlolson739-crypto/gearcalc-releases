@@ -119,15 +119,13 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .setup-body { display: flex; gap: 10px; align-items: flex-start; }
 .equip-grid {
   display: grid; grid-template-columns: repeat(3, 46px); grid-auto-rows: 46px; gap: 4px; flex-shrink: 0;
-  grid-template-areas: "spec head ." "cape neck ammo" "weapon body shield" ". legs ." "hands feet ring";
+  grid-template-areas: ". head ." "cape neck ammo" "weapon body shield" ". legs ." "hands feet ring";
 }
 .slot { position: relative; }
 .slot-btn { width: 46px; height: 46px; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: var(--inset); display: flex; align-items: center; justify-content: center; }
 .slot-btn:hover, .slot-btn.open { border-color: var(--gold); }
 .slot-btn img { max-width: 36px; max-height: 34px; image-rendering: pixelated; }
 .slot-btn img.ghost { opacity: 0.25; }
-.spec-slot { display: flex; flex-direction: column; align-items: center; }
-.spec-slot span { display: none; }
 .slot-pop { position: absolute; z-index: 30; left: 0; top: 50px; width: 300px; padding: 8px; background: #20242b; border: 1px solid var(--control); border-radius: 10px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column; gap: 6px; }
 .slot-pop input { min-height: 38px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--control); background: var(--inset); color: var(--text-strong); }
 .item-picker-list.static { position: static; max-height: 300px; box-shadow: none; border: none; padding: 0; background: transparent; }
@@ -225,6 +223,33 @@ input[type='text'], .item-picker input { min-height: 40px; padding: 0 10px; bord
 .pill { padding: 5px 10px; border-radius: 999px; background: var(--inset); border: 1px solid var(--line); font-family: var(--mono); font-size: 13px; }
 .pill.gold { border-color: var(--gold); color: var(--gold); }
 .row.end { justify-content: flex-end; }
+
+/* What's new */
+.wn-btn { position: relative; }
+.wn-dot { position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--bar); }
+.update-card.wn-card { width: 780px; max-height: min(86vh, 900px); }
+.wn-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wn-controls input { flex: 1 1 220px; min-width: 0; }
+.wn-controls .segmented { flex: 1 1 320px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.wn-controls .segmented button { min-height: 38px; align-items: center; }
+.wn-body { overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; }
+.wn-section { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 12px; }
+.wn-section h3 { margin: 0; font-size: 16px; }
+.wn-section h3 .muted { font-weight: 400; font-size: 13px; }
+.wn-notes { margin: 0; padding-left: 18px; font-size: 13px; color: var(--soft); }
+.wn-diff { display: flex; flex-direction: column; gap: 6px; }
+.wn-entry { background: var(--inset); border: 1px solid var(--line-soft); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.wn-entry.target { border-color: var(--gold); }
+.wn-entry-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.wn-name { font-weight: 600; overflow-wrap: anywhere; }
+.wn-kind { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.wn-kind.gold { border-color: var(--gold); color: var(--gold); }
+.wn-changes { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.wn-change { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line-soft); overflow-wrap: anywhere; max-width: 100%; }
+.wn-from { color: var(--muted); text-decoration: line-through; }
+.wn-to { color: var(--teal-ink); font-weight: 600; }
+.wn-names summary { cursor: pointer; font-size: 13px; color: var(--soft); }
+.wn-names p { margin: 4px 0 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .progress.big { height: 10px; border-radius: 5px; }
 .progress.big > div { height: 10px; }
 

@@ -1,14 +1,13 @@
 import { useMemo } from 'react';
-import specArt from '@/public/img/misc/power.webp';
 import { PotionMap } from '@/utils';
 import { PrayerMap } from '@/enums/Prayer';
 import { getCdnImage } from '@/utils';
 import {
   dartsFor, allSpells, findItem, NO_REDUCTIONS, SLOTS, scaledMonster, stylesFor, type Slot,
 } from '~/engine';
-import { runSetup, runSpec } from '~/calc';
+import { runSetup } from '~/calc';
 import {
-  baseMonster, EXTRA_MONSTERS, gearOf, itemById, SETUP_COLORS, targetMonster, withPhase, type AppState, type Buffs, type Setup,
+  baseMonster, EXTRA_MONSTERS, gearOf, SETUP_COLORS, targetMonster, withPhase, type AppState, type Buffs, type Setup,
 } from '~/state';
 import {
   fmtTime, itemImage, MonsterPicker, Panel, pct, PhasePicker, SlotButton, Stepper,
@@ -39,7 +38,6 @@ export default function DpsScreen({ state, setState }: Props) {
   const setSetup = (id: string, f: (x: Setup) => Setup) => setState((s) => ({ ...s, setups: s.setups.map((x) => (x.id === id ? f(x) : x)) }));
 
   const results = useMemo(() => state.setups.map((s) => runSetup(s, buffs, monster)), [state, monster]);
-  const specs = useMemo(() => state.setups.map((s) => runSpec(s, buffs, monster, state)), [state, monster]);
   const deltas = useMemo(() => {
     const rows: { label: string, values: number[] }[] = [];
     const diff = (b: Buffs) => state.setups.map((s, i) => runSetup(s, b, monster).totalDps - results[i].totalDps);
@@ -135,10 +133,6 @@ export default function DpsScreen({ state, setState }: Props) {
                         <SlotButton slot={slot} label={SLOT_LABEL[slot]} value={gear[slot] ?? null} onChange={(e) => setSetup(s.id, (x) => ({ ...x, gear: { ...x.gear, [slot]: e?.id } }))} />
                       </div>
                     ))}
-                    <div style={{ gridArea: 'spec' }} className="spec-slot">
-                      <SlotButton slot="any-weapon" label="Spec weapon" value={itemById(s.specWeapon)} onChange={(e) => setSetup(s.id, (x) => ({ ...x, specWeapon: e?.id }))} art={specArt} />
-                      <span>Spec</span>
-                    </div>
                   </div>
                   <div role="group" aria-label="Attack style" className="style-list">
                     {styles.map((x) => (
@@ -181,9 +175,6 @@ export default function DpsScreen({ state, setState }: Props) {
               {row('DPS', results.map((r) => r.totalDps), (v) => v.toFixed(2))}
               {row('Time to kill', results.map((r) => r.totalTtk), fmtTime, true)}
               {row('Attack speed', results.map((r) => r.attackSpeed), (v) => `${v} ticks`, true)}
-              {row('Spec hit chance', specs.map((x) => x?.accuracy), pct)}
-              {row('Spec max hit', specs.map((x) => x?.maxHit), (v) => String(v))}
-              {row('Defence after spec', specs.map((x) => (x?.defenceAfter ?? undefined)), (v) => String(v), true)}
               {deltas.length > 0 && <div className="section-label">DPS WITHOUT EACH BUFF</div>}
               {deltas.map((d) => (
                 <div className="results-row delta" style={{ gridTemplateColumns: cols }} key={d.label}>
@@ -195,7 +186,7 @@ export default function DpsScreen({ state, setState }: Props) {
           </div>
           <p className="small muted" style={{ margin: 0 }}>
             Calculated by the OSRS Wiki DPS engine. Gold marks the best setup in each row. DPS and time to kill include the thrall.
-            Defence after spec assumes the spec lands (Bandos godsword: an average hit).
+            Defence drains come from the Defence reduction tab.
           </p>
         </Panel>
       </section>
